@@ -2,14 +2,14 @@ from scipy.io import netcdf
 from numpy    import *
 import matplotlib.pyplot as plt
 
-filename = '/archive/Junyi.Chai/QG_exp/Nov28_kfe-1_qg/Nov28_kfe-1_qg_seg32.nc' 
+filename = '/archive/Junyi.Chai/QG_exp/Nov28_kfe1_qg/Nov28_kfe1_qg_seg43.nc' 
 
 f = netcdf.netcdf_file(filename,'r')
 psi_spec_p = f.variables['psi']
 
 T_START = 1  # starting from 1
 T_END   = psi_spec_p.shape[0]
-z_level = 0
+z_level = 1
 
 nkx      = psi_spec_p.shape[3]
 nky      = psi_spec_p.shape[2]

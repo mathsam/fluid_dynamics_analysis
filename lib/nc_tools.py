@@ -6,7 +6,17 @@ from list_tools import ComparableList
 
 class nc_chains(object):
     """Manage multiple NetCDF files from restart runs as a single
-    file transparently. The files are automatically sequenced by the numbers
+    file transparently. 
+
+    Sample usage:
+        filedir  = '/archive/Junyi.Chai/QG_exp/Nov28_kfe-2_qg'
+        filename = r'Nov28_kfe-2_qg_energy_seg[0-9]+'
+        f        = nc_chains(filedir,filename,'ke')
+        ke       = f[:]  # combine all times together
+        ke1      = f[0]  # get time zero (time_dim = 0 for these files)
+        ke2      = f[-1] # get the last element
+
+    The files are automatically sequenced by the numbers
     in the file names. If multiple numbers appear in filename, the files are
     sorted by the first appearance of number first, and then the second, and
     so on.
@@ -76,8 +86,7 @@ class nc_chains(object):
             self.time_steps_before.append(total_time_steps)
             if(self.num_dims):
                 if(self.num_dims != len(var.shape)):
-                    print "change in variable dimensions"
-                    raise
+                    raise Expection("change in variable dimensions")
             else: self.num_dims = len(var.shape)
 
         self.total_time_steps = total_time_steps
@@ -95,8 +104,7 @@ class nc_chains(object):
             -1 means the last time"""
         if(time >= 0):
             if(time >= self.total_time_steps):
-                print "time indexing %d is out of range" %time
-                raise
+                raise Exception("Time indexing is out of range")
             file_index = next(x[0] for x in enumerate(self.time_steps_before[1:])
                               if time < x[1])
             time_slice = time - self.time_steps_before[file_index]
@@ -104,8 +112,7 @@ class nc_chains(object):
         elif(time >= -self.total_time_steps):
             return self._time_to_file(time + self.total_time_steps)
         else:
-            print "time indexing %d is out of range" %time
-            raise
+            raise Exception("Time indexing is out of range")
 
 
     def _timeslice_to_file(self, index):
@@ -117,15 +124,14 @@ class nc_chains(object):
 
         slice_list   = []
         file_id_list = []
+        if(not index.start):
+            index = slice(0, index.stop, index.step)
+
         for i in (x[0] for x in enumerate(self.sorted_files)):
             # the range of indexes in file i is 
             # [self.time_steps_before[i],
             #  self.time_steps_before[i] + self.time_steps_each_file[i] -1]
             # where [] is a closed range
-            if(not index.start):
-                index = slice(0, index.stop, index.step)
-            if(not index.stop):
-                index = slice(index.start, self.total_times-1, index.step)
 
             if(index.start <= self.time_steps_before[i]
                             + self.time_steps_each_file[i] -1):
@@ -136,7 +142,8 @@ class nc_chains(object):
                 else:
                     one_slice = slice(0, one_slice.stop, one_slice.step)
 
-                if(index.stop <= self.time_steps_before[i] 
+                if(index.stop is not None and 
+                   index.stop <= self.time_steps_before[i] 
                                + self.time_steps_each_file[i] -1):
                     one_slice = slice(one_slice.start,
                                       index.stop - self.time_steps_before[i],
@@ -144,14 +151,17 @@ class nc_chains(object):
                     slice_list.append(one_slice)
                     file_id_list.append(i)
                     return slice_list, file_id_list
-                else:
+                else: # include the case index.stop == None
                     one_slice = slice(one_slice.start, None, one_slice.step)
                     slice_list.append(one_slice)
                     file_id_list.append(i)
+        if slice_list:
+            return slice_list, file_id_list
 
-        print "Index [%d:%d:%d] is out of range" %(index.start, index.stop, 
-                                                    index.step)
-        raise
+        print "Index [%s:%s:%s] is out of range" %(str(index.start), 
+                                                   str(index.stop), 
+                                                   str(index.step))
+        raise Exception("Indexing returns no files")
 
 
     def _combine_slices(self,slice_list,file_id_list = None):
@@ -184,7 +194,8 @@ class nc_chains(object):
         if isinstance(index, int):
             if (self.time_dim == 0):
                 file_index, time_slice = self._time_to_file(index)
-                print "time_slice=%d" %time_slice
+                print "file = %s, local time index = %d" \
+                       %(self.sorted_files[file_index], time_slice)
                 filename = self.filedir + self.sorted_files[file_index]
                 var = netcdf.netcdf_file(filename,'r',mmap=False).variables[self.var_name]
                 return var[time_slice] 
@@ -195,9 +206,6 @@ class nc_chains(object):
                 return self._combine_slices(slice_list)
 
         if isinstance(index, slice):
-            if(not index.start): index = slice(0,index.stop)
-            if(not index.stop):  index = slice(index.start,
-                                               self.total_time_steps)
             if(self.time_dim != 0):
                 one_slice = [slice(None)]*self.num_dims
                 one_slice[0] = index
@@ -239,8 +247,7 @@ class nc_chains(object):
                    slice_list.append(tuple(one_slice))
                return self._combine_slices(slice_list,file_id_list)
            else:
-               print "Unknown situation"
-               raise
+               raise Exception("Unknown situation")
 
 
 if __name__ == "__main__":
