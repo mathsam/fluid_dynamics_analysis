@@ -6,15 +6,16 @@ from list_tools import ComparableList
 
 class nc_chains(object):
     """Manage multiple NetCDF files from restart runs as a single
-    file transparently. 
+    file transparently. The syntax is the same as numpy array. 
 
     Sample usage:
         filedir  = '/archive/Junyi.Chai/QG_exp/Nov28_kfe-2_qg'
         filename = r'Nov28_kfe-2_qg_energy_seg[0-9]+'
         f        = nc_chains(filedir,filename,'ke')
         ke       = f[:]  # combine all times together
-        ke1      = f[0]  # get time zero (time_dim = 0 for these files)
+        ke1      = f[0]  # get first element (time_dim = 0 for these files)
         ke2      = f[-1] # get the last element
+        ke3      = f[1:2,0:5,:] # if the variable are multi-dimensional
 
     The files are automatically sequenced by the numbers
     in the file names. If multiple numbers appear in filename, the files are
