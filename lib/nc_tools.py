@@ -2,9 +2,17 @@ from scipy.io import netcdf
 import os
 import re
 import numpy as np
+import logging
 from list_tools import ComparableList
 
-class nc_chains(object):
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+_log_handler = logging.StreamHandler()
+_formater = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+_log_handler.setFormatter(_formater)
+logger.addHandler(logging.StreamHandler())
+
+class NetCDFChain(object):
     """Manage multiple NetCDF files from restart runs as a single
     file transparently. The syntax is the same as numpy array. 
 
@@ -69,7 +77,8 @@ class nc_chains(object):
                     if(netcdf.netcdf_file(filename,'r').variables[var_name]):
                        nums_in_filtered_files.append(regexp_num.findall(each_file))
                 except KeyError:
-                    print "Warning: %s does not contain %s" %(each_file, var_name)
+                    logger.info("Warning: %s does not contain %s\n", 
+                                each_file, var_name)
 
         self.sorted_files = [each_file for (each_file, tmp) in
           sorted(zip(filtered_files, nums_in_filtered_files),
@@ -92,9 +101,9 @@ class nc_chains(object):
 
         self.total_time_steps = total_time_steps
 
-        print "Files contained:"
-        print self.sorted_files[0] + '\n...\n' + self.sorted_files[-1]
-        print "%d number of time steps in total" %total_time_steps
+        logger.info("Files contained:\n"
+                  + self.sorted_files[0] + '\n...\n' + self.sorted_files[-1]
+                  + "\n%d number of time steps in total\n",total_time_steps)
 
 
     def _time_to_file(self,time):
@@ -159,7 +168,7 @@ class nc_chains(object):
         if slice_list:
             return slice_list, file_id_list
 
-        print "Index [%s:%s:%s] is out of range" %(str(index.start), 
+        logger.info("Index [%s:%s:%s] is out of range\n",str(index.start), 
                                                    str(index.stop), 
                                                    str(index.step))
         raise Exception("Indexing returns no files")
@@ -195,8 +204,8 @@ class nc_chains(object):
         if isinstance(index, int):
             if (self.time_dim == 0):
                 file_index, time_slice = self._time_to_file(index)
-                print "file = %s, local time index = %d" \
-                       %(self.sorted_files[file_index], time_slice)
+                logger.info("file = %s, local time index = %d\n",
+                            self.sorted_files[file_index], time_slice)
                 filename = self.filedir + self.sorted_files[file_index]
                 var = netcdf.netcdf_file(filename,'r',mmap=False).variables[self.var_name]
                 return var[time_slice] 
@@ -254,6 +263,6 @@ class nc_chains(object):
 if __name__ == "__main__":
     filename_regexp = r'Nov28_qg_seg[0-9]+'
     filedir = '/archive/Junyi.Chai/QG_exp/Nov28_qg'
-    f = nc_chains(filedir,filename_regexp,'psi')
+    f = NetCDFChain(filedir,filename_regexp,'psi')
     a = f[49:51]
     print a.shape
