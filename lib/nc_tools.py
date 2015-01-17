@@ -12,6 +12,28 @@ _formater = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 _log_handler.setFormatter(_formater)
 logger.addHandler(logging.StreamHandler())
 
+def ncread(filedir, filename_regexp, var_name):
+    """
+    A wrapper for NetCDFChain
+    If there is only one file, return netcdf_varialbe;
+    otherwise, return NetCDFChain object.
+    """
+    files  = os.listdir(filedir)
+    regexp = re.compile(filename_regexp)
+    filtered_files = []
+    for each_file in files:
+        if (regexp.search(each_file)):
+            filtered_files.append(each_file)
+
+    if (len(filtered_files) == 1):
+        if filedir[-1] != '/':
+            filedir += '/'
+        filename = filedir + filtered_files[0]
+        return netcdf.netcdf_file(filename,'r',mmap=False).variables[var_name][:]
+    else:
+        return NetCDFChain(filedir, filename_regexp, var_name)
+            
+
 class NetCDFChain(object):
     """Manage multiple NetCDF files from restart runs as a single
     file transparently. The syntax is the same as numpy array. 
@@ -63,9 +85,8 @@ class NetCDFChain(object):
             if (regexp.search(each_file)):
                 filtered_files.append(each_file)
 
-        if (len(filtered_files) == 1):
-            filename = filedir + filtered_files[0]
-            return netcdf.netcdf_file(filename,'r').variables[var_name]
+        if (len(filtered_files) <= 1):
+            raise ValueError('less than two files found')
 
         # get numbers in filenames and sort according to it
         regexp_num = re.compile(r'[0-9]+')
