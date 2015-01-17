@@ -1,6 +1,13 @@
 import numpy as np
 import scipy.fftpack as fftpack
 
+"""
+deals with output from qg_model using NetCDF output
+assume the field has shape as
+
+    psi(time_step (optional), real_and_imag, ky, kx, z)
+"""
+
 def get_vorticity(psik):
     """
     Calculates spectral relative
@@ -9,10 +16,10 @@ def get_vorticity(psik):
     @param psik stream function in spectral space
     @return zetak relative vorticity in spectral space
     """
-    kmax = psik.shape[-2] - 1
+    kmax = psik.shape[-3] - 1
     kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
     k2 = kx_**2 + ky_**2
-    k2.shape = (1,)*(psik.ndim-2) + psik.shape[-2:]
+    k2.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
     zetak = -k2*psik
     return zetak
     
@@ -20,9 +27,10 @@ def get_vorticity(psik):
 def real2complex(rfield):
     """
     convert qg_model output to complex numpy array
-    suppose the last dimension is real_and_imag
+    suppose input has shape
+        psi(time_step (optional), real_and_imag, ky, kx, z)
     """
-    return rfield[:,0]+1j*rfield[:,1]
+    return rfield[...,0,:,:,:]+1j*rfield[...,1,:,:,:]
 
 def fullspec(hfield):
     """
