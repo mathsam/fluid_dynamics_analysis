@@ -64,7 +64,7 @@ def spec2grid(sfield):
     output to a grided (physical) representation.  Assumes 'sfield'
     to be up-half plane, and specifies lower half plane by conjugate
     sym (since physical field is assumed real-valued).  Input field
-    should have dimensions (1:2*kmax+1,1:kmax+1,:,:), where
+    should have dimensions  (...,kmax+1,2*kmax+1,nz), where
     kmax=2^n-1, hence physical resolution will be 2^(n+1) x 2^(n+1).
     NOTE: bottom row of the input field corresponds to ky = 0, the
     kx<0 part is NOT assumed a priori to be conjugate- symmetric
@@ -72,7 +72,7 @@ def spec2grid(sfield):
     OPTIONAL: da = true pads input with 0s before transfoming to
     gridspace, for dealiased products.  Default is da = false.
     """
-    hres = sfield.shape[-1] + 1
+    hres = sfield.shape[-2] + 1
     fk = fullspec(sfield)
     fk = fftpack.ifftshift(fk, axes=(-2,-3))
     return hres*hres*np.real(fftpack.ifft2(fk, axes=(-2,-3)))
