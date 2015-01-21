@@ -29,7 +29,7 @@ def ncread(filedir, filename_regexp, var_name):
         if filedir[-1] != '/':
             filedir += '/'
         filename = filedir + filtered_files[0]
-        return netcdf.netcdf_file(filename,'r',mmap=False).variables[var_name][:]
+        return netcdf.netcdf_file(filename,'r',mmap=False).variables[var_name]
     else:
         return NetCDFChain(filedir, filename_regexp, var_name)
             

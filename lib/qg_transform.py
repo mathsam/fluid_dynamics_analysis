@@ -26,7 +26,7 @@ def get_vorticity(psik):
 
 def real2complex(rfield):
     """
-    convert qg_model output to complex numpy array
+    convert raw qg_model output to complex numpy array
     suppose input has shape
         psi(time_step (optional), real_and_imag, ky, kx, z)
     """

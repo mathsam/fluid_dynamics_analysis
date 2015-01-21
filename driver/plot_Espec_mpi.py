@@ -2,9 +2,9 @@ from scipy.io import netcdf
 from numpy    import *
 import matplotlib.pyplot as plt
 
-filename = '/archive/Junyi.Chai/QG_exp/Nov28_kfe-2_qg/Nov28_kfe-2_qg_seg100.nc' 
+filename = '/archive/Junyi.Chai/QG_exp/Jan17_drag_1e-3/Jan17_drag_1e-3_seg31.nc'
 
-f = netcdf.netcdf_file(filename,'r')
+f = netcdf.netcdf_file(filename,'r',mmap=False)
 psi_spec_p = f.variables['psi']
 
 T_START = 1  # starting from 1

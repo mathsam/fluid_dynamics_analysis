@@ -26,11 +26,12 @@ sys.path.append('/home/j1c/py/lib');
 #ml.clear()
 from nc_tools import NetCDFChain
 
-filedir  = '/archive/Junyi.Chai/QG_exp/Nov28_kfe-2_qg'
-filename = r'Nov28_kfe-2_qg_energy_seg[0-9]+'
+filename_prefix = 'Jan18_c2.5_drag_1e-1'
+filedir  = '/archive/Junyi.Chai/QG_exp/%s' %filename_prefix
+filename = r'%s_energy_seg[0-9]+' %filename_prefix
 
-save_dir  = '/home/j1c/analysis/2014/QG_model/Nov28_ke-2'
-save_name = 'energetics_seg100.png'
+save_dir  = '/home/j1c/analysis/2015/qg_model/%s' %filename_prefix
+save_name = 'energetics_seg4.png'
 
 t   = NetCDFChain(filedir, filename, 'time')[:]
 ke  = NetCDFChain(filedir, filename, 'ke')[:]
