@@ -10,16 +10,19 @@ def make_animation(frames, num_frames):
     @return fig, ani
     """
     fig = plt.figure()
+    fig.set_size_inches(5, 5)  
     ax  = fig.add_subplot(111)
     ax.set_aspect('equal')
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
+    im = ax.imshow(frames.get_frame(0), cmap='gray')
     
     def animate_func(i):
-        im = ax.imshow(frames.get_frame(i), cmap='gray')
+        print "Current frame = %d" %i
+        im.set_data(frames.get_frame(i))
         return im
 
-    ani = animation.FuncAnimation(fig, animate_func, num_frames, interval=30)    
+    ani = animation.FuncAnimation(fig, animate_func, num_frames, interval=30)  
     return fig, ani
     
 class AnimationFrames(object):
