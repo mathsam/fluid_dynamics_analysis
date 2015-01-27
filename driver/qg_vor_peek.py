@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 which_layer = 1
-psi = nc_tools.ncread('/archive/Junyi.Chai/QG_exp/Jan17_drag_1e-3','Jan17_drag_1e-3_seg[0-9]+','psi')
+psi = nc_tools.ncread('/archive/Junyi.Chai/QG_exp/Jan21Reso2x_c2.5_drag_1e-3','Jan21Reso2x_c2.5_drag_1e-3_seg[0-9]+','psi')
 psi = psi[-1,:,:,:]
 psic = qg_transform.real2complex(psi)
 vors = qg_transform.get_vorticity(psic)

@@ -14,6 +14,7 @@ def get_vorticity(psik):
     vorticity 'zetak' and vortex stretching 'etak' from spectral
     streamfunction field psik
     @param psik stream function in spectral space
+                returned from real2complex, complex numpy array
     @return zetak relative vorticity in spectral space
     """
     kmax = psik.shape[-3] - 1
@@ -84,3 +85,67 @@ def spec2grid(sfield):
     fk = fullspec(sfield)
     fk = fftpack.ifftshift(fk, axes=(-2,-3))
     return hres*hres*np.real(fftpack.ifft2(fk, axes=(-2,-3)))
+
+def energy_spec(psic):
+    """
+    Given stream function at one layer of one time step, returns its energy 
+    spectrum
+    @param psic complex numpy array
+                returned from real2complex, has shape (time (optional), ky, kx)
+    @return (wavenumber, Ek, EKEk) 1d numpy array
+    """
+    import time
+    start = time.time()
+    if not hasattr(energy_spec, 'precal') \
+       or (energy_spec.nky, energy_spec.nkx) != psic.shape:
+        nky, nkx = psic.shape[-2:]
+        energy_spec.nkx   = psic.shape[-1]
+        energy_spec.nky   = psic.shape[-2]
+        energy_spec.ksqd_ = np.zeros((nky, nkx), dtype=float)
+        
+        kmax = energy_spec.nky - 1
+        for j in range(0, nky):
+            for i in range(0, nkx):
+                energy_spec.ksqd_[j,i] = (i-kmax)**2 + j**2
+        
+        radius_arr = np.floor(np.sqrt(energy_spec.ksqd_)).astype(int)
+        energy_spec.radius_mask = []
+        for i in range(0, kmax):
+            energy_spec.radius_mask.append(radius_arr == i+1)
+        #print "precalculation done"
+    
+    kmax = energy_spec.nky - 1
+    indx_kx0 = (energy_spec.nkx-1)/2
+    KE2d  = np.zeros((energy_spec.nky, energy_spec.nkx), dtype=float)
+    Ek    = np.zeros(kmax,       dtype=float)
+    EKEk  = np.zeros(kmax,       dtype=float)
+
+    if psic.ndim == 3:
+        for i in range(0, psic.shape[0]):
+            KE2d += np.abs(psic[i,...]*psic[i,...].conj())
+        KE2d *= energy_spec.ksqd_
+        KE2d /= psic.shape[0]
+    else:
+        KE2d  = energy_spec.ksqd_*np.abs(psic*psic.conj())
+
+    for i in range(0,kmax):
+        Ek[i]   = np.sum(KE2d[energy_spec.radius_mask[i]])
+    
+    KE2d[:,indx_kx0] = 0.
+
+    for i in range(0,kmax):
+        EKEk[i]   = np.sum(KE2d[energy_spec.radius_mask[i]])
+
+    return np.arange(1,kmax+1), Ek, EKEk
+    
+def barotropic_Ek(psic):
+    """
+    barotropic energy spectrum for multiple times and multiple layers
+    @param psic complex numpy array
+                returned from real2complex, has shape 
+                (time (optional), ky, kx, z)
+    @return (wavenumber, Ek, EKEk) 1d numpy array
+    """
+    barotropic_psic = np.mean(psic, psic.ndim - 1)
+    return energy_spec(barotropic_psic)
+    

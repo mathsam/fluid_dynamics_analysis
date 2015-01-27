@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from math import log10, floor
+def round_to_1(x):
+    return round(x, -int(floor(log10(x))))
 
 def make_animation(frames, num_frames):
     """
@@ -19,7 +22,11 @@ def make_animation(frames, num_frames):
     
     def animate_func(i):
         print "Current frame = %d" %i
-        im.set_data(frames.get_frame(i))
+        field2d = frames.get_frame(i)
+        im.set_data(field2d)
+        vormap_std = np.std(field2d.flatten())
+        vormap_std = round_to_1(vormap_std)
+        im.set_clim(-2*vormap_std, 2*vormap_std)
         return im
 
     ani = animation.FuncAnimation(fig, animate_func, num_frames, interval=30)  
