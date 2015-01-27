@@ -107,7 +107,9 @@ class NetCDFChain(object):
 
         self.time_steps_each_file = []
         self.time_steps_before    = [0,]
-        self.num_dims = None
+        self.ndim = None
+        vshape     = None
+        axes       = None
         for each_file in self.sorted_files:
             filename = filedir + each_file
             var = netcdf.netcdf_file(filename,'r').variables[var_name]
@@ -115,12 +117,26 @@ class NetCDFChain(object):
             self.time_steps_each_file.append(time_len)
             total_time_steps = self.time_steps_before[-1] + time_len
             self.time_steps_before.append(total_time_steps)
-            if(self.num_dims):
-                if(self.num_dims != len(var.shape)):
-                    raise Expection("change in variable dimensions")
-            else: self.num_dims = len(var.shape)
+            if(self.ndim):
+                if(self.ndim != len(var.shape)):
+                    raise Exception("change in variable dimensions")
+            else: 
+                self.ndim = len(var.shape)
+            if(vshape):
+                # num of time steps can change; other shape cannot change
+                if(var.shape[:time_dim] + var.shape[time_dim+1:] != vshape):
+                    raise Exception("change in variable shape")
+            else:
+                vshape = var.shape[:time_dim] + var.shape[time_dim+1:]
+            if(axes):
+                if(var.dimensions != axes):
+                    raise Exception("change in variable dimensions (axes)")
+            else:
+                axes = var.dimensions
 
         self.total_time_steps = total_time_steps
+        self.shape = vshape[:time_dim] + (total_time_steps,) + vshape[time_dim:]
+        self.dimensions = axes
 
         logger.info("Files contained:\n"
                   + self.sorted_files[0] + '\n...\n' + self.sorted_files[-1]
@@ -231,20 +247,20 @@ class NetCDFChain(object):
                 var = netcdf.netcdf_file(filename,'r',mmap=False).variables[self.var_name]
                 return var[time_slice] 
             else:
-                one_slice = [slice(None)]*self.num_dims
+                one_slice = [slice(None)]*self.ndim
                 one_slice[0] = index
                 slice_list   = [tuple(one_slice)] * len(self.sorted_files)
                 return self._combine_slices(slice_list)
 
         if isinstance(index, slice):
             if(self.time_dim != 0):
-                one_slice = [slice(None)]*self.num_dims
+                one_slice = [slice(None)]*self.ndim
                 one_slice[0] = index
                 slice_list   = [tuple(one_slice)] * len(self.sorted_files)
                 return self._combine_slices(slice_list)
             else:
                 slice_map, file_id_list = self._timeslice_to_file(index)
-                NULL_slice = [slice(None)]*(self.num_dims-1)
+                NULL_slice = [slice(None)]*(self.ndim-1)
                 slice_list = [tuple([each_slice] + NULL_slice) for each_slice 
                               in slice_map]
                 return self._combine_slices(slice_list,file_id_list)
@@ -256,7 +272,7 @@ class NetCDFChain(object):
                    one_slice += [each_index]
                elif isinstance(each_index, slice):
                    one_slice += [each_index]
-           one_slice += [slice(None)]*(self.num_dims - len(index))
+           one_slice += [slice(None)]*(self.ndim - len(index))
 
             # if time dim is outside index, need all time steps
            if(self.time_dim > len(index)-1):

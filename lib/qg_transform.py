@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.fftpack as fftpack
+import nc_tools
 
 """
 deals with output from qg_model using NetCDF output
@@ -94,8 +95,6 @@ def energy_spec(psic):
                 returned from real2complex, has shape (time (optional), ky, kx)
     @return (wavenumber, Ek, EKEk) 1d numpy array
     """
-    import time
-    start = time.time()
     if not hasattr(energy_spec, 'precal') \
        or (energy_spec.nky, energy_spec.nkx) != psic.shape:
         nky, nkx = psic.shape[-2:]
@@ -138,14 +137,64 @@ def energy_spec(psic):
 
     return np.arange(1,kmax+1), Ek, EKEk
     
+def _barotropic_Ek_ncchain(psi):
+    """
+    process NetCDFChain object with lots of files
+    @param psi has shape (time, real_and_imag, ky, kx, z)
+    """
+    if not isinstance(psi, nc_tools.NetCDFChain):
+        raise TypeError("Not NetCDFChain object")
+    nky, nkx = psi.shape[-3:-1]
+    ksqd_    = np.zeros((nky, nkx), dtype=float)
+    kmax     = nky - 1
+    indx_kx0 = (nkx-1)/2
+    KE2d  = np.zeros((nky, nkx), dtype=float)
+    Ek    = np.zeros(kmax,       dtype=float)
+    EKEk  = np.zeros(kmax,       dtype=float)
+    
+    for j in range(0, nky):
+        for i in range(0, nkx):
+            ksqd_[j,i] = (i-kmax)**2 + j**2
+        
+    radius_arr = np.floor(np.sqrt(ksqd_)).astype(int)
+
+    for i, dt in enumerate(psi.time_steps_each_file):
+        #reading each file all together; if read in each time step each time
+        #reading files will take too much time
+        psi_seg = psi[psi.time_steps_before[i]:psi.time_steps_before[i]+dt]
+        if psi_seg.ndim != 5:
+            raise TypeError("file does not have correct number of dimensions")
+        psi_seg = np.mean(psi_seg, psi_seg.ndim-1) #barotropic field
+        KE2d += np.mean(np.sum(psi_seg*psi_seg, 1), 0)
+        
+    KE2d *= ksqd_
+    KE2d /= len(psi.sorted_files)
+
+    for i in range(0,kmax):
+        Ek[i]   = np.sum(KE2d[radius_arr == i+1])
+    
+    KE2d[:,indx_kx0] = 0.
+
+    for i in range(0,kmax):
+        EKEk[i]   = np.sum(KE2d[radius_arr == i+1])
+
+    return np.arange(1,kmax+1), Ek, EKEk
+    
+    
 def barotropic_Ek(psic):
     """
     barotropic energy spectrum for multiple times and multiple layers
     @param psic complex numpy array
                 returned from real2complex, has shape 
                 (time (optional), ky, kx, z)
+            OR  NetCDFChain object
+                has shape (time, real_and_imag, ky, kx, z)
     @return (wavenumber, Ek, EKEk) 1d numpy array
     """
-    barotropic_psic = np.mean(psic, psic.ndim - 1)
-    return energy_spec(barotropic_psic)
-    
+    if isinstance(psic, np.ndarray):
+        barotropic_psic = np.mean(psic, psic.ndim - 1)
+        return energy_spec(barotropic_psic)
+    elif isinstance(psic, nc_tools.NetCDFChain):
+        return _barotropic_Ek_ncchain(psic)
+    else:
+        raise TypeError("Input type not supported")
