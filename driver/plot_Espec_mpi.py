@@ -1,56 +1,27 @@
-from scipy.io import netcdf
-from numpy    import *
+import qg_transform
+import nc_tools
 import matplotlib.pyplot as plt
+import numpy as np
 
-fileprefix = 'Jan17_drag_1e-3'
-seg_num    = 40
+psi = nc_tools.ncread('/archive/Junyi.Chai/QG_exp/Jan17_drag_1e-3','Jan17_drag_1e-3_seg(3[0-9]|40)','psi')
+k,Ek,EKEk = qg_transform.barotropic_Ek(psi)
 
-filename = '/archive/Junyi.Chai/QG_exp/%s/%s_seg%d.nc' %(fileprefix, 
-                                                         fileprefix, seg_num)
-
-f = netcdf.netcdf_file(filename,'r',mmap=False)
-psi_spec_p = f.variables['psi']
-
-T_START = 1  # starting from 1
-T_END   = psi_spec_p.shape[0]
-z_level = 0
-
-nkx      = psi_spec_p.shape[3]
-nky      = psi_spec_p.shape[2]
-kmax     = nky-1
-indx_kx0 = (nkx-1)/2
-field    = zeros((nky,nkx))
-Ek       = zeros((kmax,1))
-EkEKE    = zeros((kmax,1))
-ksqd_    = zeros((nky,nkx))
-fieldEKE = zeros((nky,nkx))
-
-for i in range(0,nkx):
-    for j in range(0,nky):
-        ksqd_[j][i] = (i-kmax)**2 + j**2
-        
-radius_arr = floor(sqrt(ksqd_))
-
-for i in range(T_START-1,T_END):
-    field = field + ksqd_*(psi_spec_p[i,0,:,:,z_level]**2+psi_spec_p[i,1,:,:,z_level]**2)
-
-field    = field/T_END
-fieldEKE = copy(field)
-fieldEKE[:,indx_kx0] = 0
-
-for i in range(0,kmax):
-    Ek[i]     = sum(field[radius_arr == i+1])
-    EkEKE[i]  = sum(fieldEKE[radius_arr == i+1])
-
-k_set = arange(1,kmax+1)
-
-## ploting
-plt.loglog(k_set,Ek)
-plt.loglog(k_set[1:],EkEKE[1:],ls='--')
-x   = arange(10,101)
-p5  = Ek[9]*x**(-5.0)/(x[0]**(-5.0))/5.0
-p53 = Ek[9]*x**(-5.0/3.0)/(x[0]**(-5.0/3.0))*5.0
-plt.loglog(x,p5)
-plt.loglog(x,p53)
-plt.xlim([1,300])
+## plot the barotropic spectrum
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.loglog(k, Ek, label='KE')
+ax.loglog(k, EKEk, ls='--', label='EKE')
+x   = np.arange(10,101)
+p5  = Ek[9]*x**(-5.0)/(x[9]**(-5.0))/5.0
+p53 = Ek[9]*x**(-5.0/3.0)/(x[9]**(-5.0/3.0))/100.0
+ax.loglog(x,p5,  label='k^{-5}')
+ax.loglog(x,p53, label='k^{-5/3}')
+ax.set_xlabel('Wavenumber')
+ax.set_ylabel('Energy spectrum')
+ax.legend()
 plt.show()
+## save figure and spectrum data
+import matlab_style as mlab
+save_dir = '/home/j1c/analysis/2015/qg_model/Jan17_drag_1e-3/'
+fig.savefig(save_dir + 'barotropic_Ek.png')
+mlab.save(save_dir + 'Ek', k=k, Ek=Ek, EKEk=EKEk)
