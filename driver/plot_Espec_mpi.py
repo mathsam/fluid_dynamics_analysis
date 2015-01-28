@@ -3,7 +3,10 @@ import nc_tools
 import matplotlib.pyplot as plt
 import numpy as np
 
-psi = nc_tools.ncread('/archive/Junyi.Chai/QG_exp/Jan17_drag_1e-3','Jan17_drag_1e-3_seg(3[0-9]|40)','psi')
+filename_prefix = 'Jan18_c2_drag_1e-2'
+save_dir = '/home/j1c/analysis/2015/qg_model/%s/' %filename_prefix
+psi = nc_tools.ncread('/archive/Junyi.Chai/QG_exp/%s' %filename_prefix,
+                      '%s_seg(2[5-9]|3[0-5])' %filename_prefix,'psi')
 k,Ek,EKEk = qg_transform.barotropic_Ek(psi)
 
 ## plot the barotropic spectrum
@@ -18,10 +21,13 @@ ax.loglog(x,p5,  label='k^{-5}')
 ax.loglog(x,p53, label='k^{-5/3}')
 ax.set_xlabel('Wavenumber')
 ax.set_ylabel('Energy spectrum')
-ax.legend()
-plt.show()
+ax.legend(loc='best')
+#plt.show()
 ## save figure and spectrum data
 import matlab_style as mlab
-save_dir = '/home/j1c/analysis/2015/qg_model/Jan17_drag_1e-3/'
+import os
+if not os.path.isdir(save_dir):
+    os.mkdir(save_dir)
+
 fig.savefig(save_dir + 'barotropic_Ek.png')
 mlab.save(save_dir + 'Ek', k=k, Ek=Ek, EKEk=EKEk)

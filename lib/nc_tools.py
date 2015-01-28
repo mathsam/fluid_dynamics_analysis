@@ -141,6 +141,11 @@ class NetCDFChain(object):
         logger.info("Files contained:\n"
                   + self.sorted_files[0] + '\n...\n' + self.sorted_files[-1]
                   + "\n%d number of time steps in total\n",total_time_steps)
+                  
+    def __repr__(self):
+        return "NetCDFChain object\nContains\n%s\n...\n%s\n%d time steps in total\n%s as axes (dimensions)" %(self.sorted_files[0], self.sorted_files[-1], 
+                 self.total_time_steps,
+                 self.dimensions)
 
 
     def _time_to_file(self,time):
