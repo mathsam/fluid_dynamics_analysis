@@ -76,7 +76,7 @@ class NetCDFChain(object):
         self.time_dim = time_dim
         if filedir[-1] != '/':
             filedir += '/'
-            self.filedir = filedir
+        self.filedir = filedir
 
         files  = os.listdir(filedir)
         regexp = re.compile(filename_regexp)
