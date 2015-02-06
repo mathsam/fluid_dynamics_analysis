@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.fftpack as fftpack
+import scipy.io
 import nc_tools
 
 """
@@ -191,6 +192,9 @@ def barotropic_Ek(psic):
                 has shape (time, real_and_imag, ky, kx, z)
     @return (wavenumber, Ek, EKEk) 1d numpy array
     """
+    if isinstance(psic, scipy.io.netcdf.netcdf_variable):
+        psic = psic[:]
+        psic = real2complex(psic)
     if isinstance(psic, np.ndarray):
         barotropic_psic = np.mean(psic, psic.ndim - 1)
         return energy_spec(barotropic_psic)

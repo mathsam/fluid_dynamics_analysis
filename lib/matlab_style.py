@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 def clear():
     """
@@ -33,3 +34,23 @@ def load(filename):
     for key, value in var.iteritems():
         print '%s added to __main__ namespace' %key
         main_dict[key] = value
+        
+def fig_save(fig, filepath):
+    """
+    save a figure `fig` to filename and dir specified in `filepath`
+    If directory does not exist, create it.
+    @param fig figure object
+    @param filepath absolute path or just a filename
+    Example:
+        fig_save(fig, '~/analysis/myexp/fig.png')
+        fig_save(fig, 'fig.png') #save to current working dir
+    """
+    try:
+        fig.savefig(filepath)
+    except IOError:
+        endindex = filepath[::-1].index('/')
+        savedir = filepath[:endindex]
+        if not os.path.isdir(savedir):
+            os.mkdir(savedir)
+        fig.savefig(filepath)
+    return None
