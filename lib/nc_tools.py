@@ -59,6 +59,26 @@ class NetCDFChain(object):
        Nov28_seg1.nc
        ...
     """
+    def __new__(cls, filedir, filename_regexp, var_name, time_dim = 0):
+        """
+        If there is only one file, return netcdf_varialbe;
+        otherwise, return NetCDFChain object.
+        """
+        files  = os.listdir(filedir)
+        regexp = re.compile(filename_regexp)
+        filtered_files = []
+        for each_file in files:
+            if (regexp.search(each_file)):
+                filtered_files.append(each_file)
+    
+        if (len(filtered_files) == 1):
+            if filedir[-1] != '/':
+                filedir += '/'
+            filename = filedir + filtered_files[0]
+            logger.info("Only one file matches: %s" %each_file)
+            return netcdf.netcdf_file(filename,'r',mmap=False).variables[var_name]
+        else:
+            return object.__new__(cls)     
 
     def __init__(self, filedir, filename_regexp, var_name, time_dim = 0):
         """filedir: string
@@ -269,37 +289,50 @@ class NetCDFChain(object):
                 slice_list = [tuple([each_slice] + NULL_slice) for each_slice 
                               in slice_map]
                 return self._combine_slices(slice_list,file_id_list)
+                
+        if index is Ellipsis:
+            index = slice(None)
+            return self[index]
 
         if isinstance(index,tuple):
-           one_slice = []
-           for each_index in index:
-               if isinstance(each_index, int):
-                   one_slice += [each_index]
-               elif isinstance(each_index, slice):
-                   one_slice += [each_index]
-           one_slice += [slice(None)]*(self.ndim - len(index))
+            if len(index) > self.ndim:
+                raise KeyError('index has more dimensions than the array')
+            if Ellipsis in index:
+                first_ellip = index.index(Ellipsis)
+                index = index[0:first_ellip] + (slice(None),)*(self.ndim 
+                    - len(index) + 1) + index[first_ellip+1:]
+                index = [slice(None) if i is Ellipsis else i for i in index]
+                return self[tuple(index)]
 
+            one_slice = []
+            for each_index in index:
+                if isinstance(each_index, int):
+                    one_slice += [each_index]
+                elif isinstance(each_index, slice):
+                    one_slice += [each_index]
+            one_slice += [slice(None)]*(self.ndim - len(index))
+    
             # if time dim is outside index, need all time steps
-           if(self.time_dim > len(index)-1):
-               slice_list = [tuple(one_slice)] * len(self.sorted_files)
-               return self._combine_slices(slice_list)
-
-           time_index = index[self.time_dim]
-           if isinstance(time_index,int):
-               file_index, time_slice = self._time_to_file(time_index)
-               filename = self.filedir + self.sorted_files[file_index]
-               var = netcdf.netcdf_file(filename,'r',mmap=False).variables[self.var_name]
-               one_slice[self.time_dim] = time_slice
-               return var[tuple(one_slice)] 
-           elif isinstance(time_index,slice):
-               slice_map, file_id_list = self._timeslice_to_file(time_index)
-               slice_list = []
-               for each_slice in slice_map:
-                   one_slice[self.time_dim] = each_slice
-                   slice_list.append(tuple(one_slice))
-               return self._combine_slices(slice_list,file_id_list)
-           else:
-               raise Exception("Unknown situation")
+            if(self.time_dim > len(index)-1):
+                slice_list = [tuple(one_slice)] * len(self.sorted_files)
+                return self._combine_slices(slice_list)
+    
+            time_index = index[self.time_dim]
+            if isinstance(time_index,int):
+                file_index, time_slice = self._time_to_file(time_index)
+                filename = self.filedir + self.sorted_files[file_index]
+                var = netcdf.netcdf_file(filename,'r',mmap=False).variables[self.var_name]
+                one_slice[self.time_dim] = time_slice
+                return var[tuple(one_slice)] 
+            elif isinstance(time_index,slice):
+                slice_map, file_id_list = self._timeslice_to_file(time_index)
+                slice_list = []
+                for each_slice in slice_map:
+                    one_slice[self.time_dim] = each_slice
+                    slice_list.append(tuple(one_slice))
+                return self._combine_slices(slice_list,file_id_list)
+            else:
+                raise Exception("Unknown situation")
 
 
 if __name__ == "__main__":

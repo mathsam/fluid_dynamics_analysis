@@ -25,7 +25,30 @@ def get_vorticity(psik):
     k2.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
     zetak = -k2*psik
     return zetak
+
+def get_velocities(psik):
+    """
+    Get velocitie fields from spectral stream function
     
+    Args:
+        psik: spectral stream function field returned from real2complex
+        
+    Returns:
+        (u, v): a tuple of zonal and meridional velocities spectral field
+        
+    Raises:
+        TypeError: input doesn't seem to be spectral psi field
+    """
+    kmax = psik.shape[-3] - 1
+    if kmax%2 == 0:
+        raise TypeError('This is probably nnot a SPECTRAL psi field')
+        
+    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+    kx_.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
+    ky_.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
+    uk = -1j*ky_*psik
+    vk =  1j*kx_*psik
+    return uk, vk
 
 def real2complex(rfield):
     """

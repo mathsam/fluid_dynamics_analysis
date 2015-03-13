@@ -5,7 +5,7 @@ sys.path.append('/home/j1c/py/lib');
 #ml.clear()
 from nc_tools import NetCDFChain
 
-filename_prefix = 'Jan21Reso2x_c2.5_drag_1e-3'
+filename_prefix = 'Jan21Reso2x_c1.6_drag_1e-3'
 filedir  = '/archive/Junyi.Chai/QG_exp/%s' %filename_prefix
 filename = r'%s_energy_seg[0-9]+' %filename_prefix
 
