@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import matplotlib.pyplot as plt
 
 def clear():
     """
@@ -54,3 +55,24 @@ def fig_save(fig, filepath):
             os.mkdir(savedir)
         fig.savefig(filepath)
     return None
+    
+def plotyy(x1, y1, x2, y2, xlabel=None, ylabel1=None, ylabel2=None):
+    """
+    Create a figure with two y-axes
+    """
+    fig, ax1 = plt.subplots()
+    ax1.plot(x1, y1, 'b-')
+    if xlabel:
+        ax1.set_xlabel(xlabel)
+    if ylabel1:
+        ax1.set_ylabel(ylabel1)
+    for tl in ax1.get_yticklabels():
+        tl.set_color('b')
+        
+    ax2 = ax1.twinx()
+    ax2.plot(x2, y2, 'r-')
+    if ylabel2:
+        ax2.set_ylabel(ylabel2)
+    for tl in ax2.get_yticklabels():
+        tl.set_color('r')
+    return fig

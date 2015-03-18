@@ -12,9 +12,8 @@ assume the field has shape as
 
 def get_vorticity(psik):
     """
-    Calculates spectral relative
-    vorticity 'zetak' and vortex stretching 'etak' from spectral
-    streamfunction field psik
+    Calculates spectral relative vorticity from spectral streamfunction field
+    psik
     @param psik stream function in spectral space
                 returned from real2complex, complex numpy array
     @return zetak relative vorticity in spectral space
@@ -25,6 +24,51 @@ def get_vorticity(psik):
     k2.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
     zetak = -k2*psik
     return zetak
+    
+def get_PV(psik, F):
+    """
+    Calculate spectrum of potential vorticity given spectrum of streamfunction
+    
+    Args:
+        psik: stream function in spectral space, returned from real2complex.
+              shape is (time_step(optional), ky, kx, z)
+        
+    Returns:
+        pvk: potential vorticity spectrum. same shape as psik
+        
+    Assume linear profile therefore dz = 1/nz. For two layer model considered
+    here, thus dz = 0.5.
+    Refers to Vallis (2006), page 223, Eq. (5.137). F = f0^2/g'. H1 and H2
+    correspond dz.
+    """
+    kmax = psik.shape[-3] - 1
+    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+    k2 = kx_**2 + ky_**2
+    k2.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1]
+    dz = 0.5
+    
+    pvk = np.empty_like(psik)
+    pvk[..., 0] = -k2*psik[..., 0] + F/dz*(psik[..., 1] - psik[..., 0])
+    pvk[..., 1] = -k2*psik[..., 1] + F/dz*(psik[..., 0] - psik[..., 1])
+    return pvk
+    
+def get_betay(pvg, beta):
+    """
+    Given a potential vorticity field in physical space, return the beta*y that
+    needs to be added to it
+    
+    Args:
+        pvg: a numpy array with shape (time_step(optional), ny, nx, nz)
+        beta: a float
+        
+    Returns:
+        beta_y: a numpy array with shape (1 (optional), ny, 1, 1)
+    """
+    ny = pvg.shape[-3]
+    beta_y = beta*np.linspace(-np.pi, np.pi, ny)
+    beta_y.shape = (1,)*(pvg.ndim-3) + (ny, 1, 1)
+    return beta_y
+    
 
 def get_velocities(psik):
     """
@@ -49,7 +93,45 @@ def get_velocities(psik):
     uk = -1j*ky_*psik
     vk =  1j*kx_*psik
     return uk, vk
+    
+def partial_x(spec_field):
+    """
+    Calculate the partial derivative with respect to x
+    
+    Args:
+        spec_field: spectral field with shape (time_step(optional), ky, kx, z)
+        
+    Returns:
+        dfield_dx: spectral field with the same shape as input
+    """
+    kmax = spec_field.shape[-3] - 1
+    if kmax%2 == 0:
+        raise TypeError('This is probably nnot a SPECTRAL psi field')
 
+    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+    kx_.shape = (1,)*(spec_field.ndim-3) + spec_field.shape[-3:-1] + (1,)
+    dfield_dx = 1j*kx_*spec_field
+    return dfield_dx
+    
+def partial_y(spec_field):
+    """
+    Calculate the partial derivative with respect to y
+    
+    Args:
+        spec_field: spectral field with shape (time_step(optional), ky, kx, z)
+        
+    Returns:
+        dfield_dy: spectral field with the same shape as input
+    """
+    kmax = spec_field.shape[-3] - 1
+    if kmax%2 == 0:
+        raise TypeError('This is probably nnot a SPECTRAL psi field')
+
+    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+    ky_.shape = (1,)*(spec_field.ndim-3) + spec_field.shape[-3:-1] + (1,)
+    dfield_dy = 1j*ky_*spec_field
+    return dfield_dy
+    
 def real2complex(rfield):
     """
     convert raw qg_model output to complex numpy array
