@@ -52,6 +52,28 @@ def get_PV(psik, F):
     pvk[..., 1] = -k2*psik[..., 1] + F/dz*(psik[..., 0] - psik[..., 1])
     return pvk
     
+def prod_domain_ave_int(field1, field2):
+    """
+    Calculate domain averaged integral of product (field1*field2)
+    Do the integral in spectrum space as
+        integral(field1*field2) = 4*pi^2*sum(Re(field1*conj(field2))), where
+        field1 and field2 are returned real2complex (only contains half of the
+        spectrum coefficient (ky>0 parts)
+        
+        So the domained averaged integral is sum(Re(field1*conj(field2)))
+        
+    Args:
+        field1, field2: numpy array returned from real2complex
+                        shape is (time_step(optional), ky, kx, z)
+        
+    Returns:
+        prod_int: numpy array, integral for each time step in each layer
+                  shape is (time_step(optional), z)
+    """
+    prod_int = np.real(field1*np.conj(field2))
+    prod_int = np.sum(np.sum(prod_int, -2), -2)
+    return prod_int
+    
 def get_betay(pvg, beta):
     """
     Given a potential vorticity field in physical space, return the beta*y that
@@ -147,7 +169,7 @@ def fullspec(hfield):
     symmetry (since physical field is assumed real-valued).  'hfield'
     should have shape (...,kmax+1,2*kmax+1,nz), kmax = 2^n-1,
     hence physical resolution will be 2^(n+1) x 2^(n+1) x nz.  
-    NOTE:  The bottom row of the input field corresponds to ky = 0,
+    NOTE:  The top row of the input field corresponds to ky = 0,
     the kx<0 part is NOT assumed a priori to be conjugate-
     symmetric with the kx>0 part.
     """
@@ -182,7 +204,7 @@ def spec2grid(sfield):
     sym (since physical field is assumed real-valued).  Input field
     should have dimensions  (...,kmax+1,2*kmax+1,nz), where
     kmax=2^n-1, hence physical resolution will be 2^(n+1) x 2^(n+1).
-    NOTE: bottom row of the input field corresponds to ky = 0, the
+    NOTE: top row of the input field corresponds to ky = 0, the
     kx<0 part is NOT assumed a priori to be conjugate- symmetric
     with the kx>0 part.  NOTE: grid2spec(spec2grid(fk)) = fk.
     OPTIONAL: da = true pads input with 0s before transfoming to
