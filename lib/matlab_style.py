@@ -29,7 +29,7 @@ def load(filename):
     """
     import sys
     main_dict = sys.modules['__main__'].__dict__
-    if len(filename)<5 or filename[-3:] != '.npz':
+    if len(filename)<5 or filename[-4:] != '.npz':
         filename += '.npz'
     var = np.load(filename)
     for key, value in var.iteritems():
