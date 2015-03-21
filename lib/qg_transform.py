@@ -64,15 +64,46 @@ def prod_domain_ave_int(field1, field2):
         
     Args:
         field1, field2: numpy array returned from real2complex
-                        shape is (time_step(optional), ky, kx, z)
+                        shape is (time_step, ky, kx, z(optional))
         
     Returns:
         prod_int: numpy array, integral for each time step in each layer
-                  shape is (time_step(optional), z)
+                  shape is (time_step, z(optional))
     """
+    if field1.shape != field2.shape:
+        raise TypeError("field1 and field2 don't have same shape")
     prod_int = np.real(field1*np.conj(field2))
-    prod_int = np.sum(np.sum(prod_int, -2), -2)
+    if len(field1.shape) == 4:
+        prod_int = np.sum(np.sum(prod_int, -2), -2)
+    elif len(field1.shape) == 3:
+        prod_int = np.sum(np.sum(prod_int, -1), -1)
+    else:
+        raise NotImplementedError("unknown shape")
     return prod_int
+    
+def prod_spectrum(field1, field2):
+    """
+    Spectrum of product field1*field2. Intend for flux v'*\tau
+    """
+    if field1.shape != field2.shape:
+        raise TypeError('field1 and field2 have different shapes')
+    
+    prod2d = np.real(field1*np.conj(field2))
+    prod2d_ave = np.mean(prod2d, 0)
+        
+    nky, nkx = field1.shape[-3:-1]
+    kmax = nky - 1
+    kz = field1.shape[-1]
+    ksqd_ = np.zeros((nky, nkx), dtype=float)
+    for j in range(0, nky):
+        for i in range(0, nkx):
+            ksqd_[j,i] = (i-kmax)**2 + j**2
+    radius_arr = np.floor(np.sqrt(ksqd_)).astype(int)
+
+    spec1d = np.zeros((kmax, kz))
+    for i in range(0,kmax):
+        spec1d[i,:]   = np.sum(prod2d_ave[radius_arr == i+1,:], 0)
+    return np.arange(1,kmax+1), spec1d
     
 def get_betay(pvg, beta):
     """

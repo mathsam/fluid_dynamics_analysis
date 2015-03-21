@@ -1,4 +1,5 @@
 import numpy as np
+import qg_transform
 
 def centroid(k, weight):
     """
@@ -35,3 +36,24 @@ def inverse_centroid(k, weight, order=1.0):
     i_ave_k = np.mean(k**(-order) * weight)/np.mean(weight)
     ave_k   = i_ave_k**(-1./order)
     return ave_k
+    
+# zonal mean zonal wind                      
+def zonal_mean_zonal_wind(psi):
+    uk, vk = qg_transform.get_velocities(psi)
+    ug  = qg_transform.spec2grid(uk)    
+    mean_ug = np.mean(np.mean(ug, -2), 0)
+    return mean_ug
+
+# zonal mean PV
+def zonal_mean_PV(psi, F, beta):
+    pvg = qg_transform.spec2grid(qg_transform.get_PV(psi, F))
+    pvg += qg_transform.get_betay(pvg, beta)    
+    mean_pvg = np.mean(np.mean(pvg, -2), 0)
+    return mean_pvg
+
+def zonal_mean_dPVdy(psi, F, beta):
+    pvk = qg_transform.get_PV(psi, F)
+    dpvkdy = qg_transform.partial_y(pvk)
+    dpvgdy = qg_transform.spec2grid(dpvkdy)
+    mean_dpvdy = np.mean(np.mean(dpvgdy, -2), 0) + beta
+    return mean_dpvdy    

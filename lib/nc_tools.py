@@ -59,7 +59,8 @@ class NetCDFChain(object):
        Nov28_seg1.nc
        ...
     """
-    def __new__(cls, filedir, filename_regexp, var_name, time_dim = 0):
+    def __new__(cls, filedir, filename_regexp, var_name, time_dim = 0, 
+                     last_n_files = None):
         """
         If there is only one file, return netcdf_varialbe;
         otherwise, return NetCDFChain object.
@@ -80,7 +81,8 @@ class NetCDFChain(object):
         else:
             return object.__new__(cls)     
 
-    def __init__(self, filedir, filename_regexp, var_name, time_dim = 0):
+    def __init__(self, filedir, filename_regexp, var_name, time_dim = 0,
+                       last_n_files = None):
         """filedir: string
                 directory where the files are stored.
         filename_regexp: string, raw string
@@ -90,7 +92,9 @@ class NetCDFChain(object):
               variable name to read in
         time_dim: {0, 1, 2, ...}, optional
               the dimension that one wants to combine multiple files into
-              a single file."""
+              a single file.
+        last_n_files: select the last n files from those that match the regexp      
+        """
 
         self.var_name = var_name
         self.time_dim = time_dim
@@ -114,16 +118,21 @@ class NetCDFChain(object):
         for each_file in filtered_files:
                 filename = filedir + each_file
                 #add file only if the target variable exists in it
-                try:
-                    if(netcdf.netcdf_file(filename,'r').variables[var_name]):
-                       nums_in_filtered_files.append(regexp_num.findall(each_file))
-                except KeyError:
-                    logger.info("Warning: %s does not contain %s\n", 
-                                each_file, var_name)
+                #however, this is very slow on tape system!
+                #try:
+                #    if(netcdf.netcdf_file(filename,'r').variables[var_name]):
+                #       nums_in_filtered_files.append(regexp_num.findall(each_file))
+                #except KeyError:
+                #    logger.info("Warning: %s does not contain %s\n", 
+                #                each_file, var_name)
+                nums_in_filtered_files.append(regexp_num.findall(each_file))
 
         self.sorted_files = [each_file for (each_file, tmp) in
           sorted(zip(filtered_files, nums_in_filtered_files),
              key = lambda li : ComparableList(li[1]))]
+             
+        if last_n_files:
+            self.sorted_files = self.sorted_files[-last_n_files:]
 
         self.time_steps_each_file = []
         self.time_steps_before    = [0,]
