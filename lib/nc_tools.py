@@ -4,6 +4,7 @@ import re
 import numpy as np
 import logging
 from list_tools import ComparableList
+from mmap_array import MmapArray
 
 
 logger = logging.getLogger(__name__)
@@ -78,9 +79,9 @@ class NetCDFChain(object):
             if filedir[-1] != '/':
                 filedir += '/'
             filename = filedir + filtered_files[0]
-            logger.info("Only one file matches: %s" %each_file)
+            logger.info("Only one file matches: %s" %filename)
             fh = netcdf.netcdf_file(filename,'r',mmap=True)
-            return np.array(fh.variables[var_name][:])
+            return MmapArray(fh.variables[var_name][:], fh)
         else:
             return object.__new__(cls)     
 
