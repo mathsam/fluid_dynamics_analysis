@@ -5,6 +5,7 @@ import numpy as np
 import logging
 from list_tools import ComparableList
 
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 _log_handler = logging.StreamHandler()
@@ -29,7 +30,8 @@ def ncread(filedir, filename_regexp, var_name):
         if filedir[-1] != '/':
             filedir += '/'
         filename = filedir + filtered_files[0]
-        return netcdf.netcdf_file(filename,'r',mmap=False).variables[var_name]
+        fh = netcdf.netcdf_file(filename,'r',mmap=True)
+        return np.array(fh.variables[var_name][:])
     else:
         return NetCDFChain(filedir, filename_regexp, var_name)
             
@@ -77,7 +79,8 @@ class NetCDFChain(object):
                 filedir += '/'
             filename = filedir + filtered_files[0]
             logger.info("Only one file matches: %s" %each_file)
-            return netcdf.netcdf_file(filename,'r',mmap=False).variables[var_name]
+            fh = netcdf.netcdf_file(filename,'r',mmap=True)
+            return np.array(fh.variables[var_name][:])
         else:
             return object.__new__(cls)     
 
@@ -259,13 +262,13 @@ class NetCDFChain(object):
 
         for each_file_id, each_slice in zip(file_id_list, slice_list):
             filename = self.filedir + self.sorted_files[each_file_id]
-            f   = netcdf.netcdf_file(filename,'r',mmap=False)
+            f   = netcdf.netcdf_file(filename,'r',mmap=True)
             var = f.variables[self.var_name]
             #var = netcdf.netcdf_file(filename,'r').variables[self.var_name]
             if(combined_var is None):
-                combined_var = var[each_slice]
+                combined_var = np.array(var[each_slice])
             else:
-                tmp_var      = var[each_slice]
+                tmp_var      = np.array(var[each_slice])
                 combined_var = np.concatenate((combined_var,tmp_var),
                                               axis = self.time_dim)
         return combined_var
@@ -278,8 +281,9 @@ class NetCDFChain(object):
                 logger.info("file = %s, local time index = %d\n",
                             self.sorted_files[file_index], time_slice)
                 filename = self.filedir + self.sorted_files[file_index]
-                var = netcdf.netcdf_file(filename,'r',mmap=False).variables[self.var_name]
-                return var[time_slice] 
+                fh = netcdf.netcdf_file(filename,'r',mmap=True)
+                var = fh.variables[self.var_name]
+                return np.array(var[time_slice])
             else:
                 one_slice = [slice(None)]*self.ndim
                 one_slice[0] = index
@@ -330,9 +334,10 @@ class NetCDFChain(object):
             if isinstance(time_index,int):
                 file_index, time_slice = self._time_to_file(time_index)
                 filename = self.filedir + self.sorted_files[file_index]
-                var = netcdf.netcdf_file(filename,'r',mmap=False).variables[self.var_name]
+                fh = netcdf.netcdf_file(filename,'r',mmap=True)
+                var = fh.variables[self.var_name]
                 one_slice[self.time_dim] = time_slice
-                return var[tuple(one_slice)] 
+                return np.array(var[tuple(one_slice)])
             elif isinstance(time_index,slice):
                 slice_map, file_id_list = self._timeslice_to_file(time_index)
                 slice_list = []

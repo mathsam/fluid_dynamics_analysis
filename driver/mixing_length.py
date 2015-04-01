@@ -22,6 +22,7 @@ last_n_files = 2
 
 square_v    = np.zeros((len(cri_list), len(drag_list)))
 square_u    = np.zeros((len(cri_list), len(drag_list)))
+square_tau  = np.zeros((len(cri_list), len(drag_list)))
 heat_flux   = np.zeros((len(cri_list), len(drag_list)))
 tracer_flux = np.zeros((len(cri_list), len(drag_list), 2))
 
@@ -47,6 +48,8 @@ for i, exp_i in enumerate(exp_list):
         tau = 0.5*(psik[...,0] - psik[...,1])
         heat_flux[i,j] = np.mean(
             qg_transform.prod_domain_ave_int(bt_vk, tau), 0)
+        square_tau[i,j] = np.mean(
+            qg_transform.prod_domain_ave_int(tau, tau), 0)
         del tau
         del psik
         del bt_vk
@@ -58,7 +61,8 @@ for i, exp_i in enumerate(exp_list):
 
         del tracer_yk, vk
 
-        ml.save(os.path.join(save_dir, 'energy_scale.npz'), square_v=square_v,
-                                                    square_u=square_u,
-                                                    heat_flux=heat_flux,
-                                                    tracer_flux=tracer_flux) 
+ml.save(os.path.join(save_dir, 'energy_scale.npz'), square_v=square_v,
+                                            square_u=square_u,
+                                            heat_flux=heat_flux,
+                                            tracer_flux=tracer_flux,
+                                            square_tau=square_tau) 
