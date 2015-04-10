@@ -62,6 +62,15 @@ def fig_save(fig, filepath):
 def plotyy(x1, y1, x2, y2, xlabel=None, ylabel1=None, ylabel2=None):
     """
     Create a figure with two y-axes
+    
+    Args:
+        x1, y1, x2, y2: numpy arrays to plot
+        xlabel: label for x-axis
+        ylabel1: label for y-axis on the left
+        ylabel2: label for y-axis on the right
+        
+    Returns:
+        fig: figure created
     """
     fig, ax1 = plt.subplots()
     ax1.plot(x1, y1, 'b-')

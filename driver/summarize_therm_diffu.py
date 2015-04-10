@@ -6,11 +6,11 @@ from nc_tools import NetCDFChain
 
 exp_list  = ['Jan17_drag_', 'Jan18_c2_drag_', 'Jan18_c2.5_drag_']
 cri_list  = ['1.6', '2.0', '2.5']
-drag_list = ['1e0', '1e-1', '1e-2', '1e-3']
+drag_list = ['1e0', '1e-1', '1e-2', '1e-3', '5e-4', '1e-4']
 arch_dir  = '/archive/Junyi.Chai/QG_exp/'
 average_period = 200
 U_BAR    = 1.
-ROSSBY_R = 2*pi/250
+ROSSBY_R = 2*pi/500.
 
 
 gen_rate = DataFrame(columns=cri_list, index=map(float,drag_list))

@@ -5,7 +5,7 @@ import nc_tools
 import animation_tools
 import matplotlib.animation as animation
 
-exp_name = 'Jan18_c2.5_drag_1e-2'
+exp_name = 'Jan18_c2_drag_1e-4'
 z_level  = 1 
 dpi      = 900
 save_dir  = '/home/j1c/analysis/2015/qg_model/%s' %exp_name

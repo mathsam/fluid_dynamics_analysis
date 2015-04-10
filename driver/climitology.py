@@ -7,12 +7,12 @@ import diag
 # Sc = 2.0, F = 1583.14, beta = 3166.29
 # Sc = 2.5, F = 1583.14, beta = 2533.03
 F    = 1583.14
-beta = 3957.9
+beta = 2533.03
 
-filename_prefix = 'Jan17_drag_1e-2'
+filename_prefix = 'Jan18_c2.5_drag_1e-4'
 save_dir = '/home/j1c/analysis/2015/qg_model/%s/' %filename_prefix
-psi = nc_tools.ncread('/archive/Junyi.Chai/QG_exp/%s' %filename_prefix,
-                      '%s_seg(24|25)' %filename_prefix,'psi')[:]
+psi = nc_tools.NetCDFChain('/archive/Junyi.Chai/QG_exp/%s' %filename_prefix,
+                      '%s_seg' %filename_prefix,'psi', last_n_files=2)[:]
 psi = qg_transform.real2complex(psi)
 
 mean_u     = diag.zonal_mean_zonal_wind(psi)

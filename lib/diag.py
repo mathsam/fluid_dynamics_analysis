@@ -39,21 +39,24 @@ def inverse_centroid(k, weight, order=1.0):
     
 # zonal mean zonal wind                      
 def zonal_mean_zonal_wind(psi):
-    uk, vk = qg_transform.get_velocities(psi)
+    timeave_psi = np.mean(psi, 0)
+    uk, vk = qg_transform.get_velocities(timeave_psi)
     ug  = qg_transform.spec2grid(uk)    
-    mean_ug = np.mean(np.mean(ug, -2), 0)
+    mean_ug = np.mean(ug, -2)
     return mean_ug
 
 # zonal mean PV
 def zonal_mean_PV(psi, F, beta):
-    pvg = qg_transform.spec2grid(qg_transform.get_PV(psi, F))
+    timeave_psi = np.mean(psi, 0)
+    pvg = qg_transform.spec2grid(qg_transform.get_PV(timeave_psi, F))
     pvg += qg_transform.get_betay(pvg, beta)    
-    mean_pvg = np.mean(np.mean(pvg, -2), 0)
+    mean_pvg = np.mean(pvg, -2)
     return mean_pvg
 
 def zonal_mean_dPVdy(psi, F, beta):
-    pvk = qg_transform.get_PV(psi, F)
+    timeave_psi = np.mean(psi, 0)
+    pvk = qg_transform.get_PV(timeave_psi, F)
     dpvkdy = qg_transform.partial_y(pvk)
     dpvgdy = qg_transform.spec2grid(dpvkdy)
-    mean_dpvdy = np.mean(np.mean(dpvgdy, -2), 0) + beta
+    mean_dpvdy = np.mean(dpvgdy, -2) + beta
     return mean_dpvdy    

@@ -32,6 +32,7 @@ def get_PV(psik, F):
     Args:
         psik: stream function in spectral space, returned from real2complex.
               shape is (time_step(optional), ky, kx, z)
+        F: F param in model
         
     Returns:
         pvk: potential vorticity spectrum. same shape as psik
