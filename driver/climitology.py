@@ -9,10 +9,10 @@ import diag
 F    = 1583.14
 beta = 2533.03
 
-filename_prefix = 'Jan18_c2.5_drag_1e-4'
+filename_prefix = 'Jan17_drag_1e-3'
 save_dir = '/home/j1c/analysis/2015/qg_model/%s/' %filename_prefix
 psi = nc_tools.NetCDFChain('/archive/Junyi.Chai/QG_exp/%s' %filename_prefix,
-                      '%s_seg' %filename_prefix,'psi', last_n_files=2)[:]
+                      '%s_seg' %filename_prefix,'psi', last_n_files=1)[:]
 psi = qg_transform.real2complex(psi)
 
 mean_u     = diag.zonal_mean_zonal_wind(psi)

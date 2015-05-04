@@ -17,6 +17,10 @@ gen_rate = DataFrame(columns=cri_list, index=map(float,drag_list))
 gen_rate.index.name   = 'bottom_drag'
 gen_rate.columns.name = 'criticality'
 
+ape = DataFrame(columns=cri_list, index=map(float,drag_list))
+ape.index.name = 'bottom_drag'
+ape.columns.name = 'criticality'
+
 for i, exp_i in enumerate(exp_list):
     for drag_i in drag_list:
         filedir = arch_dir + exp_i + drag_i
@@ -24,6 +28,9 @@ for i, exp_i in enumerate(exp_list):
         gen_bci_rate     = NetCDFChain(filedir, filename, 'gen_bci_rate')[-200:]
         ave_gen_bci_rate = gen_bci_rate.mean()
         gen_rate[cri_list[i]][float(drag_i)] = ave_gen_bci_rate
+        
+        ape_tmp = NetCDFChain(filedir, filename, 'ape')[-200:]
+        ape[cri_list[i]][float(drag_i)] = ape_tmp.mean()
 
 therm_diffusivity = gen_rate/(2*pi)**2*ROSSBY_R/U_BAR**3
 

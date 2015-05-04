@@ -5,7 +5,7 @@ from math import log10, floor
 def round_to_1(x):
     return round(x, -int(floor(log10(x))))
 
-def make_animation(frames, num_frames):
+def make_animation(frames, num_frames, cmap='gray'):
     """
     make an animation with `num_frames` number of frames
     @param frames AnimationFrames object
@@ -18,7 +18,7 @@ def make_animation(frames, num_frames):
     ax.set_aspect('equal')
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
-    im = ax.imshow(frames.get_frame(0), cmap='gray')
+    im = ax.imshow(frames.get_frame(0), cmap=cmap)
     
     def animate_func(i):
         print "Current frame = %d" %i

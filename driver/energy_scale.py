@@ -13,10 +13,12 @@ save_dir = '/home/j1c/analysis/2015/qg_model/scales'
 
 exp_list  = ['Jan17_drag_', 'Jan18_c2_drag_', 'Jan18_c2.5_drag_']
 cri_list  = ['1.6', '2.0', '2.5']
-drag_list = ['1e0', '1e-1', '1e-2', '1e-3']
+drag_list = ['1e0', '1e-1', '1e-2', '1e-3', '5e-4', '1e-4']
 
 cent_EKE = np.zeros((len(cri_list), len(drag_list)))
 cent_ZKE = np.zeros((len(cri_list), len(drag_list)))
+ZKE = np.zeros((len(cri_list), len(drag_list)))
+EKE = np.zeros((len(cri_list), len(drag_list)))
 
 for i, exp_i in enumerate(exp_list):
     for j, drag_i in enumerate(drag_list):
@@ -30,9 +32,13 @@ for i, exp_i in enumerate(exp_list):
         
         cent_EKE[i,j] = diag.centroid(k, EKEk)
         cent_ZKE[i,j] = diag.centroid(k, ZKEk)
+        ZKE[i,j] = np.sum(ZKEk)
+        EKE[i,j] = np.sum(EKEk)
         
 ml.save(os.path.join(save_dir, 'energy_scale.npz'), cent_EKE=cent_EKE,
-                                                    cent_ZKE=cent_ZKE)
+                                                    cent_ZKE=cent_ZKE,
+                                                    ZKE=ZKE,
+                                                    EKE=EKE)
 ## plot the ratio of zonal jet scale over eddy scale
 fig = plt.figure()
 ax  = fig.add_subplot(111)

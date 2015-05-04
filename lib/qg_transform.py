@@ -361,3 +361,34 @@ def barotropic_Ek(psic):
         return _barotropic_Ek_ncchain(psic)
     else:
         raise TypeError("Input type not supported")
+        
+def filter(spec, k_min, k_max, remove_zonal=False):
+    """filter the spectrum
+    keep only the spetrum component with wavenumber (sqrt(kx**2+ky**2)) within
+    [k_min, kmax]
+    
+    Args:
+        spec: complex numpy array with shape (time(optional), ky, kx, z)
+        k_min, k_max: integer|None, mininum and maximum wavenumbers to keep
+            if set to None, then means no lower or upper bound
+        remove_zonal: True|False (default)
+        
+    Return:
+        filtered_spec: same size as the input `spec`
+    """
+    nky, nkx = spec.shape[-3:-1]
+    ksqd_    = np.zeros((nky, nkx), dtype=float)
+    kmax     = nky - 1
+    
+    for j in range(0, nky):
+        for i in range(0, nkx):
+            ksqd_[j,i] = (i-kmax)**2 + j**2
+    mask = np.ones_like(ksqd_)
+    if k_min:
+        mask[ksqd_ < k_min**2] = 0.
+    if k_max:
+        mask[ksqd_ > k_max**2] = 0.
+    if remove_zonal:
+        mask[:,(nkx-1)/2] = 0.
+    mask.shape = (1,)*(spec.ndim-3) + mask.shape + (1,)
+    return mask*spec

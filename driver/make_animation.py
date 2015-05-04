@@ -4,8 +4,9 @@ sys.path.append('../lib')
 import nc_tools 
 import animation_tools
 import matplotlib.animation as animation
+#from matplotlib import cm
 
-exp_name = 'Jan18_c2_drag_1e-4'
+exp_name = 'Apr30_kfe-1'
 z_level  = 1 
 dpi      = 900
 save_dir  = '/home/j1c/analysis/2015/qg_model/%s' %exp_name
