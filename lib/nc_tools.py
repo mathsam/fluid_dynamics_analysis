@@ -211,6 +211,21 @@ class NetCDFChain(object):
         file_id_list = []
         if(not index.start):
             index = slice(0, index.stop, index.step)
+        
+        if index.start is not None and index.start < 0:
+            if index.start >= -self.total_time_steps:
+                index = slice(index.start + self.total_time_steps, 
+                    index.stop, index.step)
+            else:
+                raise IndexError("%d is out of range" %index.start)
+                
+        if index.stop is not None and index.stop < 0:
+            if index.stop >= -self.total_time_steps:
+                index = slice(index.start, 
+                    index.stop + self.total_time_steps, index.step)
+            else:
+                raise IndexError("%d is out of range" %index.stop)
+            
 
         for i in (x[0] for x in enumerate(self.sorted_files)):
             # the range of indexes in file i is 

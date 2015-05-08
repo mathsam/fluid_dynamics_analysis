@@ -80,7 +80,7 @@ def prod_domain_ave_int(field1, field2):
         prod_int = np.sum(np.sum(prod_int, -1), -1)
     else:
         raise NotImplementedError("unknown shape")
-    return prod_int
+    return 2*prod_int
     
 def prod_spectrum(field1, field2):
     """
@@ -104,7 +104,7 @@ def prod_spectrum(field1, field2):
     spec1d = np.zeros((kmax, kz))
     for i in range(0,kmax):
         spec1d[i,:]   = np.sum(prod2d_ave[radius_arr == i+1,:], 0)
-    return np.arange(1,kmax+1), spec1d
+    return np.arange(1,kmax+1), 2*spec1d
     
 def get_betay(pvg, beta):
     """
@@ -388,6 +388,37 @@ def filter(spec, k_min, k_max, remove_zonal=False):
         mask[ksqd_ < k_min**2] = 0.
     if k_max:
         mask[ksqd_ > k_max**2] = 0.
+    if remove_zonal:
+        mask[:,(nkx-1)/2] = 0.
+    mask.shape = (1,)*(spec.ndim-3) + mask.shape + (1,)
+    return mask*spec
+    
+def filter_zonal(spec, kx_min, kx_max, remove_zonal=False):
+    """filter the spectrum in the zonal direction
+    keep only the spetrum component with zonal wavenumber kx within
+    [k_min, kmax]
+    
+    Args:
+        spec: complex numpy array with shape (time(optional), ky, kx, z)
+        kx_min, kx_max: integer|None, mininum and maximum wavenumbers to keep
+            if set to None, then means no lower or upper bound
+        remove_zonal: True|False (default)
+        
+    Return:
+        filtered_spec: same size as the input `spec`
+    """
+    nky, nkx = spec.shape[-3:-1]
+    abskx_    = np.zeros((nky, nkx), dtype=float)
+    kmax     = nky - 1
+    
+    for j in range(0, nky):
+        for i in range(0, nkx):
+            abskx_[j,i] = np.abs(i-kmax)
+    mask = np.ones_like(abskx_)
+    if kx_min:
+        mask[abskx_ < kx_min] = 0.
+    if kx_max:
+        mask[abskx_ > kx_max] = 0.
     if remove_zonal:
         mask[:,(nkx-1)/2] = 0.
     mask.shape = (1,)*(spec.ndim-3) + mask.shape + (1,)

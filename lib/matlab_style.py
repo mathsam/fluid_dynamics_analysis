@@ -59,7 +59,7 @@ def fig_save(fig, filepath):
         fig.savefig(filepath)
     return None
     
-def plotyy(x1, y1, x2, y2, xlabel=None, ylabel1=None, ylabel2=None):
+def plotyy(x1, y1, x2, y2, xlabel=None, ylabel1=None, ylabel2=None, ax1=None):
     """
     Create a figure with two y-axes
     
@@ -72,8 +72,9 @@ def plotyy(x1, y1, x2, y2, xlabel=None, ylabel1=None, ylabel2=None):
     Returns:
         fig: figure created
     """
-    fig, ax1 = plt.subplots()
-    ax1.plot(x1, y1, 'b-')
+    if ax1 is None:
+        fig, ax1 = plt.subplots()
+    ax1.plot(x1, y1, 'b-', label=ylabel1)
     if xlabel:
         ax1.set_xlabel(xlabel)
     if ylabel1:
@@ -82,9 +83,12 @@ def plotyy(x1, y1, x2, y2, xlabel=None, ylabel1=None, ylabel2=None):
         tl.set_color('b')
         
     ax2 = ax1.twinx()
-    ax2.plot(x2, y2, 'r-')
+    ax2.plot(x2, y2, 'r-', label=ylabel2)
     if ylabel2:
         ax2.set_ylabel(ylabel2)
     for tl in ax2.get_yticklabels():
         tl.set_color('r')
-    return fig
+    if ax1 is None:
+        return fig
+    else:
+        return ax2

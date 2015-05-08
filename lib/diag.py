@@ -59,4 +59,21 @@ def zonal_mean_dPVdy(psi, F, beta):
     dpvkdy = qg_transform.partial_y(pvk)
     dpvgdy = qg_transform.spec2grid(dpvkdy)
     mean_dpvdy = np.mean(dpvgdy, -2) + beta
-    return mean_dpvdy    
+    return mean_dpvdy
+    
+def sponge_mask(num_lats, sponge_width=0.05, sponge_rate=1.):
+    """return the sponge_mask for calculating energy dissipation by the sponges
+    Args:
+        sponge_width: ratio of the width of the sponge to the domain size
+        num_lats: number of grid points
+        sponge_rate: default is 1
+    Returns:
+        mask: numpy array with shape (num_lats, )
+    """
+    lat = np.linspace(0, 1, num_lats)
+    lower_sponge = sponge_rate*(1. - lat/sponge_width)
+    upper_sponge = sponge_rate*(lat - 1. + sponge_width)/sponge_width
+    
+    mask = np.maximum(lower_sponge, 
+        np.maximum(upper_sponge, np.zeros(num_lats)))
+    return mask
