@@ -12,27 +12,27 @@ average_period = 200
 U_BAR    = 1.
 ROSSBY_R = 2*pi/500.
 
+num_rows = len(drag_list)
+num_colmns = len(cri_list)
 
-gen_rate = DataFrame(columns=cri_list, index=map(float,drag_list))
-gen_rate.index.name   = 'bottom_drag'
-gen_rate.columns.name = 'criticality'
+energetics = {'ke': np.zeros((num_rows, num_colmns)),
+    'filter_rate': np.zeros((num_rows, num_colmns)),
+    'bottom_drag_rate': np.zeros((num_rows, num_colmns)),
+    'ape': np.zeros((num_rows, num_colmns)),
+    'gen_bci_rate': np.zeros((num_rows, num_colmns)),
+    'eddy_time': np.zeros((num_rows, num_colmns))}
 
-ape = DataFrame(columns=cri_list, index=map(float,drag_list))
-ape.index.name = 'bottom_drag'
-ape.columns.name = 'criticality'
 
-for i, exp_i in enumerate(exp_list):
-    for drag_i in drag_list:
-        filedir = arch_dir + exp_i + drag_i
-        filename = r'%senergy_seg[0-9]+' %(exp_i + drag_i + '_')
-        gen_bci_rate     = NetCDFChain(filedir, filename, 'gen_bci_rate')[-200:]
-        ave_gen_bci_rate = gen_bci_rate.mean()
-        gen_rate[cri_list[i]][float(drag_i)] = ave_gen_bci_rate
-        
-        ape_tmp = NetCDFChain(filedir, filename, 'ape')[-200:]
-        ape[cri_list[i]][float(drag_i)] = ape_tmp.mean()
+for exp_i, exp_name in enumerate(exp_list):
+    for drag_i, drag_name in enumerate(drag_list):
+        filedir = arch_dir + exp_name + drag_name
+        filename = r'%senergy_seg[0-9]+' %(exp_name + drag_name + '_')
+        for var_name in energetics.keys():
+            var = NetCDFChain(filedir, filename, var_name)[-average_period:]
+            ave_var = np.mean(var)
+            energetics[var_name][drag_i, exp_i] = ave_var
 
-therm_diffusivity = gen_rate/(2*pi)**2*ROSSBY_R/U_BAR**3
+#therm_diffusivity = gen_rate/(2*pi)**2*ROSSBY_R/U_BAR**3
 
 ## save results
 import os
@@ -40,15 +40,5 @@ save_dir = '/home/j1c/analysis/2015/qg_model/Jan17to18_summary/'
 if not os.path.isdir(save_dir):
     os.mkdir(save_dir)
 
-therm_diffusivity.to_csv(save_dir + 'therm_diffusivity.csv')
-therm_diffusivity.save(save_dir + 'therm_diffusivity.pd')
-gen_rate.to_csv(save_dir + 'gen_rate.csv')
-gen_rate.save(save_dir + 'gen_rate.pd')
-## plot results
-import matplotlib.pyplot as plt
-fig = plt.figure()
-ax = fig.add_subplot(111)
-therm_diffusivity.plot(ax=ax, style='--o', loglog=True)
-ax.set_ylabel('thermal diffusivity')
-plt.show()
-fig.savefig(save_dir + 'diffusivity.png')
+for var_name in energetics.keys():
+    np.save(save_dir + var_name, energetics[var_name])

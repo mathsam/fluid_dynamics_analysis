@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matlab_style
 
-which_layer = 0
-filename_prefix = 'Jan21Reso2x_c2.5_drag_1e-3'
+which_layer = 1
+filename_prefix = 'May18_Cd0.1'
 
 filedir  = '/archive/Junyi.Chai/QG_exp/%s' %filename_prefix
 filename = r'%s_seg[0-9]+' %filename_prefix
@@ -26,5 +26,9 @@ plt.show()
 
 ## save figure
 save_dir = '/home/j1c/analysis/2015/qg_model/%s/' %filename_prefix
+import os
+if not os.path.isdir(save_dir):
+    os.mkdir(save_dir)
+
 save_name = 'vor_layer=%d_t=%d.png' %(which_layer, psif.total_time_steps)
 matlab_style.fig_save(fig, save_dir + save_name)

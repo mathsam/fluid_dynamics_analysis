@@ -7,13 +7,17 @@ import diag
 # Sc = 2.0, F = 1583.14, beta = 3166.29
 # Sc = 2.5, F = 1583.14, beta = 2533.03
 F    = 1583.14
-beta = 2533.03
+beta = 3957.86
 
-filename_prefix = 'Jan17_drag_1e-3'
+filename_prefix = 'Jan17_drag_1e-4'
 save_dir = '/home/j1c/analysis/2015/qg_model/%s/' %filename_prefix
 psi = nc_tools.NetCDFChain('/archive/Junyi.Chai/QG_exp/%s' %filename_prefix,
-                      '%s_seg' %filename_prefix,'psi', last_n_files=1)[:]
+                      '%s_seg' %filename_prefix,'psi', last_n_files=3)[:]
 psi = qg_transform.real2complex(psi)
+v = qg_transform.get_velocities(psi)[1]
+vg = qg_transform.spec2grid(v)
+bt_vg = np.mean(vg, -1)
+mean_v2 = np.mean(np.mean(vg**2, -2), 0)
 
 mean_u     = diag.zonal_mean_zonal_wind(psi)
 mean_pv    = diag.zonal_mean_PV(psi, F, beta)
@@ -63,8 +67,10 @@ fig_u  = plot_zonal_field(mean_u, 'u')
 fig_pv = plot_zonal_field(mean_pv, 'pv')
 fig_dpvdy   = plot_zonal_field(mean_dpvdy, 'dPVdy')
 fig_dpvdybt = plot_zonal_field(np.mean(mean_dpvdy, 1), 'barotropic dPVdy')
+fig_v2 = plot_zonal_field(mean_v2, "$v'^2$")
 
 fig_u.savefig(save_dir + 'mean_u.png')
 fig_pv.savefig(save_dir + 'mean_PV.png')
 fig_dpvdy.savefig(save_dir + 'mean_dPVdy.png')
 fig_dpvdybt.savefig(save_dir + 'mean_barotropic_dPVdy.png')
+fig_v2.savefig(save_dir + 'v2.png')

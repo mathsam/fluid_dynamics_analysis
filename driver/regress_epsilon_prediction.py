@@ -27,8 +27,19 @@ import functools
 import scipy.optimize
 def epsilon_eq(x, ibeta, ikf, A, B):
     L = 2*np.pi
-    return x**(0.4) + B*x**(0.9)/ibeta/L/np.sqrt(np.sqrt(F)*ikf) - A*4.*F*ibeta**(-0.8)
-    
+    return x**(0.4)*(1 + B*x**(0.05)*(np.sqrt(F)*ikf)**(-0.25)*ibeta**(0.1)) - A*4.*F*ibeta**(-0.8)
+
+def find_first_zero(func, min, max, tol=1e-9):
+    min, max = float(min), float(max)
+    assert (max + tol) > max
+    while (max - min) > tol:
+        mid = (min + max) / 2
+        if func(mid) > 0:
+            max = mid
+        else:
+            min = mid
+    return max
+
 def solve_epsilon(param):
     A = param[0]
     B = param[1]
@@ -36,13 +47,13 @@ def solve_epsilon(param):
     for i in range(0, pred_epsilon.size):
         curr_epsilon_eq = functools.partial(epsilon_eq, ibeta=beta[i],
             ikf=kf[i], A=A, B=B)
-        pred_epsilon[i] = scipy.optimize.newton_krylov(curr_epsilon_eq, 50.)
+        pred_epsilon[i] = find_first_zero(curr_epsilon_eq, 0.1, 1000., 1e-9)
     return pred_epsilon
 
 def residual(param):
     return solve_epsilon(param) - epsilon
 
-opt_params = scipy.optimize.leastsq(residual, np.array([10., 1.]))
+opt_params = scipy.optimize.leastsq(residual, np.array([1., 0.5]))
 print opt_params
 
 ## plot results predicted epsilon vs. simulation epsilon 

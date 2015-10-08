@@ -32,3 +32,13 @@ ml.save(os.path.join(save_dir, 'Jan17_18_heatflux.npz'), flux_spec=flux_spec,
                                                     v2_spec=v2_spec,
                                                     tau2_spec=tau2_spec,
                                                     v_tau_corr=v_tau_corr)
+## plot correlation
+plt.semilogx(v_tau_corr[2,1::2,:].T)
+plt.xlabel('Wavenumber')
+plt.ylabel(r"corr($\tau'$, $v'$)")
+plt.show()
+## plot heat flux
+plt.loglog(flux_spec[2,1::2,:].T)
+plt.xlabel('Wavenumber')
+plt.ylabel(r"$\tau'v$")
+plt.show()
