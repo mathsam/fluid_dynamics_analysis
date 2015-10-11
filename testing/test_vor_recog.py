@@ -1,3 +1,4 @@
+## test filter criterion
 import scipy.ndimage.measurements as measure
 f_vorg = extract_zonal_extreme(vorg[:,:,1],10,80)
 [la,nums] = measure.label(f_vorg)
@@ -21,3 +22,13 @@ for k in range(1,nums):
         plt.scatter(y-y_min,x-x_min)
         plt.savefig('%d.png' %k)
         plt.clf()
+
+## test centering vortex in a box
+[la, nums] = measure.label(vors)
+for k in range(1, nums):
+    x,y = np.where(la==k)
+    [one_vor, one_vor_wb] = center_one_vortex(15, x, y, True, vors, vorg[:,:,1])
+    plt.imshow(one_vor_wb, interpolation='none', cmap='gray')
+    plt.colorbar()
+    plt.savefig('%d_inbox.png' %k)
+    plt.clf()

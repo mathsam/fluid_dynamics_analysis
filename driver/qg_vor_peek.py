@@ -7,10 +7,9 @@ import numpy as np
 import matlab_style
 
 which_layer = 1
-filename_prefix = 'May18_Cd0.1'
-
+filename_prefix = 'Jan18_c2.5_drag_1e-4'
 filedir  = '/archive/Junyi.Chai/QG_exp/%s' %filename_prefix
-filename = r'%s_seg[0-9]+' %filename_prefix
+filename = r'%s_seg354' %filename_prefix
 psif = nc_tools.ncread(filedir, filename,'psi')
 psi = psif[-1,:,:,:]
 psic = qg_transform.real2complex(psi)
