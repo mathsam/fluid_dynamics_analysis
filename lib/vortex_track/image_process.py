@@ -116,8 +116,8 @@ def center_one_vortex(box_size, x, y, with_bkgroud=True, vor=None, *fields):
     """
     if vor is not None:
         momts = _moments2e(x, y, vor[x,y])
-        widthx = vor.shape[0]+1
-        widthy = vor.shape[1]+1
+        widthx = vor.shape[0]
+        widthy = vor.shape[1]
     else:
         momts = _moments2e(x, y)
         widthx = np.inf
@@ -127,13 +127,17 @@ def center_one_vortex(box_size, x, y, with_bkgroud=True, vor=None, *fields):
     cen_vor = np.zeros((box_size,box_size))
     box_cen = box_size/2
     x_left  = np.maximum(vor_ctr_x-box_cen, 0)
-    x_right = np.minimum(vor_ctr_x-box_cen+box_size+1, widthx)
+    x_right = np.minimum(vor_ctr_x-box_cen+box_size, widthx)
     y_left  = np.maximum(vor_ctr_y-box_cen, 0)
-    y_right = np.minimum(vor_ctr_y-box_cen+box_size+1, widthy)
+    y_right = np.minimum(vor_ctr_y-box_cen+box_size, widthy)
+    xc_left  = x_left-vor_ctr_x+box_cen
+    xc_right = xc_left+x_right-x_left
+    yc_left  = y_left-vor_ctr_y+box_cen
+    yc_right = yc_left+y_right-y_left
     if vor is not None:
         if with_bkgroud:
-            cen_vor = vor[x_left:x_right,
-                          y_left:y_right]
+            cen_vor[xc_left:xc_right,yc_left:yc_right] = vor[x_left:x_right,
+                                                             y_left:y_right]
         else:
             cen_vor[x-vor_ctr_x+box_cen,y-vor_ctr_y+box_cen] = vor[x,y]
     else:
@@ -144,8 +148,9 @@ def center_one_vortex(box_size, x, y, with_bkgroud=True, vor=None, *fields):
     for i in range(len(fields)):
         curr_field = np.zeros((box_size,box_size))
         if with_bkgroud:
-            curr_field = fields[i][x_left:x_right,
-                                   y_left:y_right]
+            curr_field[xc_left:xc_right,yc_left:yc_right] = fields[i][
+                x_left:x_right,
+                y_left:y_right]
         else:
             curr_field[x-vor_ctr_x+box_cen,y-vor_ctr_y+box_cen] = fields[i][x,y]
         opt_fields_out.append(curr_field)
