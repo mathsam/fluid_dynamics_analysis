@@ -5,7 +5,8 @@ import operator
 box_size = 15
 fields_list = [vorg[:,:,1], vorg[:,:,0], 
                ug[:,:,1], ug[:,:,0], 
-               vg[:,:,1], vg[:,:,0]]
+               vg[:,:,1], vg[:,:,0],
+               tau]
 p_vortex = []
 n_vortex = []
 num_p_vor = 0
@@ -35,11 +36,11 @@ n_one_vortex = map(lambda x: x/num_n_vor, n_vortex)
 
 ##
 plt.subplot(1,2,1)
-plt.imshow(p_one_vortex[0], interpolation='none',cmap='gray')
+plt.imshow(n_one_vortex[0], interpolation='none',cmap='gray')
 plt.title('lower')
 plt.colorbar()
 plt.subplot(1,2,2)
-plt.imshow(p_one_vortex[1], interpolation='none',cmap='gray')
-plt.title('upper')
+plt.imshow(n_one_vortex[6], interpolation='none',cmap='gray')
+plt.title(r'$\tau$')
 plt.colorbar()
 plt.show()
