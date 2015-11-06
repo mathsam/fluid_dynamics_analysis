@@ -24,6 +24,46 @@ def get_vorticity(psik):
     k2.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
     zetak = -k2*psik
     return zetak
+
+def laplacian(psik, order=1):
+    """
+    Calculate laplacian to the nth order
+    
+    Args:
+        psik: complex field with shape (time (optional), ky, kx)
+        order: evaluate \nabla^(2*order)
+            default is the normal lapacian operator
+    
+    Return:
+        zetak: complex spectrum
+    """
+    kmax = psik.shape[-2] - 1
+    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+    k2 = kx_**2 + ky_**2
+    k2.shape = (1,)*(psik.ndim-2) + psik.shape[-2:]
+    zetak = psik * (-k2)**order
+    return zetak
+    
+def jacobian(Ak, Bk):
+    """
+    Calculate J(Ak, Bk)
+    
+    Args:
+        Ak, Bk: complex fields with shape (time(optional), ky, kx)
+    
+    Return:
+        Jacob: in physical space
+    """
+    Dx_Ak = partial_x(Ak, True)
+    Dx_Bk = partial_x(Bk, True)
+    Dy_Ak = partial_y(Ak, True)
+    Dy_Bk = partial_y(Bk, True)
+    Dx_Ag = spec2grid(Dx_Ak, True)
+    Dx_Bg = spec2grid(Dx_Bk, True)
+    Dy_Ag = spec2grid(Dy_Ak, True)
+    Dy_Bg = spec2grid(Dy_Bk, True)
+    return Dx_Ag*Dy_Bg - Dy_Ag*Dx_Bg
+    
     
 def get_PV(psik, F):
     """
@@ -106,6 +146,30 @@ def prod_spectrum(field1, field2):
         spec1d[i,:]   = np.sum(prod2d_ave[radius_arr == i+1,:], 0)
     return np.arange(1,kmax+1), 2*spec1d
     
+def prod_spectrum_zonal(field1, field2):
+    """
+    Spectrum of product field1*field2. Sum over zonal wavenumber kx
+    
+    Args:
+        field1, field2: complex spec fields with shape 
+            (time, ky, kx)
+        
+    Return:
+        kxs: 1 to kmax (511 in most of my simulations)
+        spec: 1d array
+    """
+    if field1.shape != field2.shape:
+        raise TypeError('field1 and field2 have different shapes')
+    
+    prod2d = np.real(field1*np.conj(field2))
+    prod2d_ave = np.mean(prod2d, 0)
+    prod1d_ave = np.sum(prod2d_ave, 0)
+    
+    nky, nkx = field1.shape[-2:]
+    kmax = nky - 1
+    spec1d = (prod1d_ave + prod1d_ave[::-1])[-kmax:]
+    return np.arange(1,kmax+1), 2*spec1d
+    
 def get_betay(pvg, beta):
     """
     Given a potential vorticity field in physical space, return the beta*y that
@@ -148,43 +212,66 @@ def get_velocities(psik):
     vk =  1j*kx_*psik
     return uk, vk
     
-def partial_x(spec_field):
+def partial_x(spec_field, single_layer=False):
     """
     Calculate the partial derivative with respect to x
     
     Args:
         spec_field: spectral field with shape (time_step(optional), ky, kx, z)
+        single_layer: True|False. If True, spec_field's shape is
+            (time_step(optional), ky, kx)
         
     Returns:
         dfield_dx: spectral field with the same shape as input
     """
-    kmax = spec_field.shape[-3] - 1
-    if kmax%2 == 0:
-        raise TypeError('This is probably nnot a SPECTRAL psi field')
-
-    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
-    kx_.shape = (1,)*(spec_field.ndim-3) + spec_field.shape[-3:-1] + (1,)
-    dfield_dx = 1j*kx_*spec_field
-    return dfield_dx
+    if not single_layer:
+        kmax = spec_field.shape[-3] - 1
+        if kmax%2 == 0:
+            raise TypeError('This is probably nnot a SPECTRAL psi field')
     
-def partial_y(spec_field):
+        kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+        kx_.shape = (1,)*(spec_field.ndim-3) + spec_field.shape[-3:-1] + (1,)
+        dfield_dx = 1j*kx_*spec_field
+        return dfield_dx
+    else:
+        kmax = spec_field.shape[-2] - 1
+        if kmax%2 == 0:
+            raise TypeError('This is probably nnot a SPECTRAL psi field')
+        kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+        kx_.shape = (1,)*(spec_field.ndim-2) + spec_field.shape[-2:]
+        dfield_dx = 1j*kx_*spec_field
+        return dfield_dx
+    
+def partial_y(spec_field, single_layer=True):
     """
     Calculate the partial derivative with respect to y
     
     Args:
         spec_field: spectral field with shape (time_step(optional), ky, kx, z)
+        single_layer: True|False. If True, spec_field's shape is
+            (time_step(optional), ky, kx)
         
     Returns:
         dfield_dy: spectral field with the same shape as input
     """
-    kmax = spec_field.shape[-3] - 1
-    if kmax%2 == 0:
-        raise TypeError('This is probably nnot a SPECTRAL psi field')
-
-    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
-    ky_.shape = (1,)*(spec_field.ndim-3) + spec_field.shape[-3:-1] + (1,)
-    dfield_dy = 1j*ky_*spec_field
-    return dfield_dy
+    if not single_layer:
+        kmax = spec_field.shape[-3] - 1
+        if kmax%2 == 0:
+            raise TypeError('This is probably nnot a SPECTRAL psi field')
+    
+        kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+        ky_.shape = (1,)*(spec_field.ndim-3) + spec_field.shape[-3:-1] + (1,)
+        dfield_dy = 1j*ky_*spec_field
+        return dfield_dy
+    else:
+        kmax = spec_field.shape[-2] - 1
+        if kmax%2 == 0:
+            raise TypeError('This is probably nnot a SPECTRAL psi field')
+    
+        kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+        ky_.shape = (1,)*(spec_field.ndim-2) + spec_field.shape[-2:]
+        dfield_dy = 1j*ky_*spec_field
+        return dfield_dy
     
 def real2complex(rfield):
     """
@@ -194,7 +281,7 @@ def real2complex(rfield):
     """
     return rfield[...,0,:,:,:]+1j*rfield[...,1,:,:,:]
 
-def fullspec(hfield):
+def fullspec(hfield, single_layer=False):
     """
     Assumes 'hfield' to contain upper-half plane of spectral field, 
     and specifies lower half plane by conjugate 
@@ -204,31 +291,53 @@ def fullspec(hfield):
     NOTE:  The top row of the input field corresponds to ky = 0,
     the kx<0 part is NOT assumed a priori to be conjugate-
     symmetric with the kx>0 part.
+    
+    Args:
+        sfield: complex spectrum field with shape (t(optional), ky, kx, z)
+        single_layer: True|False. If True, spec_field's shape is
+            (time_step(optional), ky, kx)
     """
     if not isinstance(hfield, np.ndarray):
         raise TypeError("input needs to be numpy array")
     if hfield.ndim < 2:
         raise ValueError("array must be at least 2 dimensional")
-        
-    nky, nkx = hfield.shape[-3:-1]
-
-    if nkx+1 != 2*nky:
-        raise ValueError("hfield must have dim (..., kmax+1, 2*kmax+1)")
-    hres = nkx + 1
-    kmax = nky - 1
-    fk = np.zeros(hfield.shape[:-3]+(hres,hres)+(hfield.shape[-1],), 
-                  dtype=complex)
     
-    fup = np.copy(hfield)
-    fup[...,0,kmax-1::-1,:] = fup.conj()[...,0,kmax+1:,:]
-    #fup[...,0,kmax,:] = 0. # a littile confused whether should do this
-    fdn = np.copy(fup.conj()[..., nky-1:0:-1, nkx-1::-1,:])
-    fk[..., nky:, 1:,:] = fup
-    fk[...,1:nky, 1:,:] = fdn
-    return fk
+    if not single_layer:
+        nky, nkx = hfield.shape[-3:-1]
+    
+        if nkx+1 != 2*nky:
+            raise ValueError("hfield must have dim (..., kmax+1, 2*kmax+1)")
+        hres = nkx + 1
+        kmax = nky - 1
+        fk = np.zeros(hfield.shape[:-3]+(hres,hres)+(hfield.shape[-1],), 
+                    dtype=complex)
+        
+        fup = np.copy(hfield)
+        fup[...,0,kmax-1::-1,:] = fup.conj()[...,0,kmax+1:,:]
+        #fup[...,0,kmax,:] = 0. # a littile confused whether should do this
+        fdn = np.copy(fup.conj()[..., nky-1:0:-1, nkx-1::-1,:])
+        fk[..., nky:, 1:,:] = fup
+        fk[...,1:nky, 1:,:] = fdn
+        return fk
+    else:
+        nky, nkx = hfield.shape[-2:]
+
+        if nkx+1 != 2*nky:
+            raise ValueError("hfield must have dim (..., kmax+1, 2*kmax+1)")
+        hres = nkx + 1
+        kmax = nky - 1
+        fk = np.zeros(hfield.shape[:-2]+(hres,hres), dtype=complex)
+        
+        fup = np.copy(hfield)
+        fup[...,0,kmax-1::-1] = fup.conj()[...,0,kmax+1:]
+        #fup[...,0,kmax,:] = 0. # a littile confused whether should do this
+        fdn = np.copy(fup.conj()[..., nky-1:0:-1, nkx-1::-1])
+        fk[..., nky:, 1:] = fup
+        fk[...,1:nky, 1:] = fdn
+        return fk
 
 
-def spec2grid(sfield):
+def spec2grid(sfield, single_layer=False):
     """
     Transform one frame of SQG model
     output to a grided (physical) representation.  Assumes 'sfield'
@@ -241,11 +350,22 @@ def spec2grid(sfield):
     with the kx>0 part.  NOTE: grid2spec(spec2grid(fk)) = fk.
     OPTIONAL: da = true pads input with 0s before transfoming to
     gridspace, for dealiased products.  Default is da = false.
+    
+    Args:
+        sfield: complex spectrum field with shape (t(optional), ky, kx, z)
+        single_layer: True|False. If True, spec_field's shape is
+            (time_step(optional), ky, kx)
     """
-    hres = sfield.shape[-2] + 1
-    fk = fullspec(sfield)
-    fk = fftpack.ifftshift(fk, axes=(-2,-3))
-    return hres*hres*np.real(fftpack.ifft2(fk, axes=(-2,-3)))
+    if not single_layer:
+        hres = sfield.shape[-2] + 1
+        fk = fullspec(sfield)
+        fk = fftpack.ifftshift(fk, axes=(-2,-3))
+        return hres*hres*np.real(fftpack.ifft2(fk, axes=(-2,-3)))
+    else:
+        hres = sfield.shape[-1] + 1
+        fk = fullspec(sfield, True)
+        fk = fftpack.ifftshift(fk, axes=(-1,-2))
+        return hres*hres*np.real(fftpack.ifft2(fk, axes=(-1,-2)))
 
 def energy_spec(psic):
     """
