@@ -16,31 +16,30 @@ def get_vorticity(psik):
     psik
     @param psik stream function in spectral space
                 returned from real2complex, complex numpy array
+                with shape (time (optional), ky, kx, z(optional))
     @return zetak relative vorticity in spectral space
     """
-    kmax = psik.shape[-3] - 1
-    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
-    k2 = kx_**2 + ky_**2
-    k2.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
-    zetak = -k2*psik
-    return zetak
+    return laplacian(psik, 1)
 
 def laplacian(psik, order=1):
     """
     Calculate laplacian to the nth order
     
     Args:
-        psik: complex field with shape (time (optional), ky, kx)
+        psik: complex field with shape (time (optional), ky, kx, z(optional))
         order: evaluate \nabla^(2*order)
             default is the normal lapacian operator
     
     Return:
         zetak: complex spectrum
     """
-    kmax = psik.shape[-2] - 1
+    num_zdim = not _is_single_layer(psik.shape)
+    ky_pos = -2 - num_zdim
+    kmax = psik.shape[ky_pos] - 1
+
     kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
     k2 = kx_**2 + ky_**2
-    k2.shape = (1,)*(psik.ndim-2) + psik.shape[-2:]
+    k2.shape = (1,)*(psik.ndim + ky_pos) + (kmax+1, 2*kmax+1) + (1,)*num_zdim
     zetak = psik * (-k2)**order
     return zetak
     
@@ -125,14 +124,24 @@ def prod_domain_ave_int(field1, field2):
 def prod_spectrum(field1, field2):
     """
     Spectrum of product field1*field2. Intend for flux v'*\tau
+    
+    Args:
+        field1, field2: spec field with shape
+                        (time(optional), ky, kx, z(optional))
     """
     if field1.shape != field2.shape:
         raise TypeError('field1 and field2 have different shapes')
     
     prod2d = np.real(field1*np.conj(field2))
-    prod2d_ave = np.mean(prod2d, 0)
-        
-    nky, nkx = field1.shape[-3:-1]
+    if not _is_single_time(prod2d):
+        prod2d_ave = np.mean(prod2d, 0)
+    else:
+        prod2d_ave = prod2d
+    
+    if _is_single_layer(field1.shape):
+        nky, nkx = field1.shape[-2:]
+    else:
+        nky, nkx = field1.shape[-3:-1]
     kmax = nky - 1
     kz = field1.shape[-1]
     ksqd_ = np.zeros((nky, nkx), dtype=float)
@@ -152,7 +161,7 @@ def prod_spectrum_zonal(field1, field2):
     
     Args:
         field1, field2: complex spec fields with shape 
-            (time, ky, kx)
+            (time(optional), ky, kx, z(optional))
         
     Return:
         kxs: 1 to kmax (511 in most of my simulations)
@@ -160,15 +169,22 @@ def prod_spectrum_zonal(field1, field2):
     """
     if field1.shape != field2.shape:
         raise TypeError('field1 and field2 have different shapes')
-    
+
     prod2d = np.real(field1*np.conj(field2))
-    prod2d_ave = np.mean(prod2d, 0)
+    if not _is_single_time(prod2d.shape):
+        prod2d_ave = np.mean(prod2d, 0)
+    else:
+        prod2d_ave = prod2d
     prod1d_ave = np.sum(prod2d_ave, 0)
     
-    nky, nkx = field1.shape[-2:]
+    if _is_single_layer(field1.shape):
+        nky, nkx = field1.shape[-2:]
+    else:
+        nky, nkx = field1.shape[-3:-1]
     kmax = nky - 1
     spec1d = (prod1d_ave + prod1d_ave[::-1])[-kmax:]
     return np.arange(1,kmax+1), 2*spec1d
+        
     
 def get_betay(pvg, beta):
     """
@@ -194,6 +210,7 @@ def get_velocities(psik):
     
     Args:
         psik: spectral stream function field returned from real2complex
+              (time_step(optional), ky, kx, z(optional))
         
     Returns:
         (u, v): a tuple of zonal and meridional velocities spectral field
@@ -201,30 +218,40 @@ def get_velocities(psik):
     Raises:
         TypeError: input doesn't seem to be spectral psi field
     """
-    kmax = psik.shape[-3] - 1
-    if kmax%2 == 0:
-        raise TypeError('This is probably nnot a SPECTRAL psi field')
-        
-    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
-    kx_.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
-    ky_.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
-    uk = -1j*ky_*psik
-    vk =  1j*kx_*psik
-    return uk, vk
+    if not _is_single_layer(psik.shape):
+        kmax = psik.shape[-3] - 1
+        if kmax%2 == 0:
+            raise TypeError('This is probably nnot a SPECTRAL psi field')
+            
+        kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+        kx_.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
+        ky_.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1] + (1,)
+        uk = -1j*ky_*psik
+        vk =  1j*kx_*psik
+        return uk, vk
+    else:
+        kmax = psik.shape[-2] - 1
+        if kmax%2 == 0:
+            raise TypeError('This is probably nnot a SPECTRAL psi field')
+            
+        kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+        kx_.shape = (1,)*(psik.ndim-2) + psik.shape[-2:]
+        ky_.shape = (1,)*(psik.ndim-2) + psik.shape[-2:]
+        uk = -1j*ky_*psik
+        vk =  1j*kx_*psik
+        return uk, vk
     
-def partial_x(spec_field, single_layer=False):
+def partial_x(spec_field):
     """
     Calculate the partial derivative with respect to x
     
     Args:
-        spec_field: spectral field with shape (time_step(optional), ky, kx, z)
-        single_layer: True|False. If True, spec_field's shape is
-            (time_step(optional), ky, kx)
+        spec_field: spectral field with shape (time_step(optional), ky, kx, z(optional))
         
     Returns:
         dfield_dx: spectral field with the same shape as input
     """
-    if not single_layer:
+    if not _is_single_layer(spec_field.shape):
         kmax = spec_field.shape[-3] - 1
         if kmax%2 == 0:
             raise TypeError('This is probably nnot a SPECTRAL psi field')
@@ -242,19 +269,17 @@ def partial_x(spec_field, single_layer=False):
         dfield_dx = 1j*kx_*spec_field
         return dfield_dx
     
-def partial_y(spec_field, single_layer=True):
+def partial_y(spec_field):
     """
     Calculate the partial derivative with respect to y
     
     Args:
-        spec_field: spectral field with shape (time_step(optional), ky, kx, z)
-        single_layer: True|False. If True, spec_field's shape is
-            (time_step(optional), ky, kx)
+        spec_field: spectral field with shape (time_step(optional), ky, kx, z(optional))
         
     Returns:
         dfield_dy: spectral field with the same shape as input
     """
-    if not single_layer:
+    if not _is_single_layer(spec_field.shape):
         kmax = spec_field.shape[-3] - 1
         if kmax%2 == 0:
             raise TypeError('This is probably nnot a SPECTRAL psi field')
@@ -336,8 +361,54 @@ def fullspec(hfield, single_layer=False):
         fk[...,1:nky, 1:] = fdn
         return fk
 
+def _is_single_time(shape):
+    """determine if the `shape` corresponds to single time or multiple time 
+    array
+    Single time would be (ky, kx, z(optional)
+    Multiple time would be (time, ky, kx, z(optional)
+    """
+    res_ndims = len(shape) - _is_single_layer(shape)
+    if res_ndims == 3:
+        return False
+    elif res_ndims == 2:
+        return True
 
-def spec2grid(sfield, single_layer=False):
+def _is_single_layer(shape):
+    """determine the given `shape` tuple corresponds to single layer or multiple
+    layers.
+    Single layer would be (time(optional), ky, kx)
+    Multi-layers would be (time(optional), ky, kx, z)
+    The difference is just that whether the last dimension correponds to z
+    
+    Args:
+        shape: a tuple consists of integers with len to be at least 2
+        
+    Return:
+        True|False
+    
+    Exception:
+        ValueError: cannot determine
+    
+    Note:
+        whether z-dim exist is determined from the relation kx = 2*ky - 1
+    """
+    if len(shape) < 2:
+        raise ValueError('shape should have at least 2 dimensions')
+    if len(shape) == 2:
+        if shape[0]*2 - 1 == shape[1]:
+            return True
+        else:
+            raise ValueError('does not seem to be a spectral field')
+    n1, n2, n3 = shape[-3:]
+    n1_n2_is_ky_kx = (n1*2 -1 == n2)
+    n2_n3_is_ky_kx = (n2*2 -1 == n3)
+    if n1_n2_is_ky_kx and not n2_n3_is_ky_kx:
+        return False
+    if n2_n3_is_ky_kx and not n1_n2_is_ky_kx:
+        return True
+    raise ValueError('Unable to determine whether single layer or not')
+
+def spec2grid(sfield):
     """
     Transform one frame of SQG model
     output to a grided (physical) representation.  Assumes 'sfield'
@@ -352,11 +423,9 @@ def spec2grid(sfield, single_layer=False):
     gridspace, for dealiased products.  Default is da = false.
     
     Args:
-        sfield: complex spectrum field with shape (t(optional), ky, kx, z)
-        single_layer: True|False. If True, spec_field's shape is
-            (time_step(optional), ky, kx)
-    """
-    if not single_layer:
+        sfield: complex spectrum field with shape (t(optional), ky, kx, z(optional))
+    """        
+    if not _is_single_layer(sfield.shape):
         hres = sfield.shape[-2] + 1
         fk = fullspec(sfield)
         fk = fftpack.ifftshift(fk, axes=(-2,-3))
