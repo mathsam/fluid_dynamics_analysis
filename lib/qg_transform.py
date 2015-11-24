@@ -186,7 +186,35 @@ def prod_spectrum_zonal(field1, field2):
     kmax = nky - 1
     spec1d = (prod1d_ave + prod1d_ave[::-1])[-kmax:]
     return np.arange(1,kmax+1), 2*spec1d
+
+def prod_spectrum_meridional(field1, field2):
+    """
+    Spectrum of product field1*field2. Sum over zonal wavenumber ky
+    
+    Args:
+        field1, field2: complex spec fields with shape 
+            (time(optional), ky, kx, z(optional))
         
+    Return:
+        kys: 1 to kmax (511 in most of my simulations)
+        spec: 1d array
+    """
+    if field1.shape != field2.shape:
+        raise TypeError('field1 and field2 have different shapes')
+
+    prod2d = np.real(field1*np.conj(field2))
+    if not _is_single_time(field1.shape):
+        prod2d_ave = np.mean(prod2d, 0)
+    else:
+        prod2d_ave = prod2d
+    prod1d_ave = np.sum(prod2d_ave, 1)
+    
+    if _is_single_layer(field1):
+        nky, nkx = field1.shape[-2:]
+    else:
+        nky, nkx = field1.shape[-3:-1]
+    kmax = nky - 1
+    return np.arange(1,kmax+1), 2*prod1d_ave[1:]
     
 def get_betay(pvg, beta):
     """
