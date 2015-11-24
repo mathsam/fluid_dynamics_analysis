@@ -3,7 +3,7 @@ import nc_tools
 import matplotlib.pyplot as plt
 import numpy as np
 
-filename_prefix = 'Jan17_drag_5e-4'
+filename_prefix = 'Nov4_drag5e-4'
 save_dir = '/home/j1c/analysis/2015/qg_model/%s/' %filename_prefix
 psi = nc_tools.NetCDFChain('/archive/Junyi.Chai/QG_exp/%s' %filename_prefix,
                       '%s_seg' %filename_prefix,'psi', last_n_files=1)
@@ -23,7 +23,7 @@ ax.loglog(x,p53, label='$k^{-5/3}$')
 ax.set_xlabel('Wavenumber')
 ax.set_ylabel('Energy spectrum')
 ax.legend(loc='best')
-#plt.show()
+plt.show()
 ## save figure and spectrum data
 import matlab_style as mlab
 import os

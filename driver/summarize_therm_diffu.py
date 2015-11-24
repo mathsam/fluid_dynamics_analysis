@@ -4,11 +4,11 @@ import pandas as pd
 from math import pi
 from nc_tools import NetCDFChain
 
-exp_list  = ['Jan17_drag_', 'Jan18_c2_drag_', 'Jan18_c2.5_drag_']
-cri_list  = ['1.6', '2.0', '2.5']
-drag_list = ['1e0', '1e-1', '1e-2', '1e-3', '5e-4', '1e-4']
+exp_list  = ['Nov4_drag', 'Nov5_Sc1.6_drag']
+cri_list  = ['1.6', '1.6']
+drag_list = ['5e-1', '5e-2', '5e-3', '5e-4', '5e-5']
 arch_dir  = '/archive/Junyi.Chai/QG_exp/'
-average_period = 200
+average_period = 50
 U_BAR    = 1.
 ROSSBY_R = 2*pi/500.
 
@@ -36,9 +36,17 @@ for exp_i, exp_name in enumerate(exp_list):
 
 ## save results
 import os
-save_dir = '/home/j1c/analysis/2015/qg_model/Jan17to18_summary/'
+save_dir = '/home/j1c/analysis/2015/qg_model/Nov4_5/'
 if not os.path.isdir(save_dir):
     os.mkdir(save_dir)
 
 for var_name in energetics.keys():
     np.save(save_dir + var_name, energetics[var_name])
+## plot result
+plt.loglog(drag, energetics['gen_bci_rate'][:,1], '-ro', label='energy generation rate')
+plt.loglog(drag, 100*drag, '--', label='~ x')
+plt.loglog(drag, 1000*np.sqrt(drag), '--', label='~ x^{1/2}')
+plt.legend(loc='best')
+plt.xlabel('drag')
+plt.ylabel(r'$\epsilon$')
+plt.show()

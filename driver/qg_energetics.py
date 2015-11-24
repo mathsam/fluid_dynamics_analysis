@@ -4,8 +4,9 @@ sys.path.append('/home/j1c/py/lib');
 #import matlab_style as ml
 #ml.clear()
 from nc_tools import NetCDFChain
+import numpy as np
 
-filename_prefix = 'Nov4_Sc2.5_drag5e-2'
+filename_prefix = 'Nov4_Sc2.0_drag5e-4'
 filedir  = '/archive/Junyi.Chai/QG_exp/%s' %filename_prefix
 filename = r'%s_energy_seg[0-9]+' %filename_prefix
 
@@ -17,6 +18,9 @@ gen_bci_rate     = NetCDFChain(filedir, filename, 'gen_bci_rate')[:]
 bottom_drag_rate = NetCDFChain(filedir, filename, 'bottom_drag_rate')[:]
 filter_rate      = NetCDFChain(filedir, filename, 'filter_rate')[:]
 
+mean_gen = np.mean(gen_bci_rate[-50:])
+mean_diss= np.mean(bottom_drag_rate[-50:]+filter_rate[-50:])
+print "gen = %f, diss=%f, imblance=%f" %(mean_gen, mean_diss, (mean_gen+mean_diss)/mean_gen)
 
 # plotting
 import matplotlib.pyplot as plt
