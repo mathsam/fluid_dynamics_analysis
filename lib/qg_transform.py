@@ -215,7 +215,89 @@ def prod_spectrum_meridional(field1, field2):
         nky, nkx = field1.shape[-3:-1]
     kmax = nky - 1
     return np.arange(1,kmax+1), 2*prod1d_ave[1:]
+
+def hypervis_filter(kmax, filter_tune=1.0, filter_exp=4, dealiasing='isotropic', 
+                    filter_type='hyperviscous', Nexp=1.0):
+    """Return the hyperviscous filter in use for the spectrum
     
+    Args:
+        kmax: interger. For example 511 for resolution 1024x1024
+        filter_tune: filter parameter. Default is 1.0
+        filter_exp: integer. Corresponds to del^(2*filter_exp)
+        dealiasing: 'isotropic'|'orszag'
+        filter_type: 'hyperviscous' is currently only one implemented
+        Nexp: 1(default)|2, SUQG requires Nexp=2
+    
+    Return:
+        filter2d: 2d array with shape (ky, kx)
+    
+    In the model q = filter2d*q is applied before the next time stepping
+    """
+    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+    k2 = kx_**2 + ky_**2
+    kmax_da2 = 8./9. * (kmax+1)**2
+    ngrid = 2*(kmax+1)
+    
+    if filter_type == 'hyperviscous':
+        filter2d = 1./(1 + filter_tune * (4*np.pi/ngrid**Nexp) 
+                                       * (k2/kmax_da2)**filter_exp)
+    else:
+        raise NotImplementedError('other filter types than hyperviscous not implemented')
+                                   
+    if dealiasing == 'isotropic':
+        filter2d[k2 >= 8./9.*(kmax+1)**2] = 0
+    elif dealiasing == 'orszag':
+        filter2d[k2 >= 4./3.*(kmax+1)**2] = 0
+    else:
+        raise NotImplementedError('dealiasing type not implemented')
+    return filter2d
+
+def hypervis_filter_rate(kmax, dt, filter_tune=1.0, filter_exp=4, dealiasing='isotropic', 
+                    filter_type='hyperviscous', Nexp=1.0):
+    """Return the hyperviscous filter rate in use for the spectrum
+    
+    Args:
+        kmax: interger. For example 511 for resolution 1024x1024
+        dt: time step
+        filter_tune: filter parameter, default is 1.0
+        filter_exp: integer. Corresponds to del^(2*filter_exp)
+        dealiasing: 'isotropic'|'orszag'
+        filter_type: 'hyperviscous' is currently only one implemented
+        Nexp: 1(default)|2, SUQG requires Nexp=2
+    
+    Return:
+        filter_rate_2d: 2d array with shape (ky, kx)
+    
+    The effect of filter:
+        dq/dt = ... + filter_rate_2d*q
+    """
+    filter2d = hypervis_filter(kmax, filter_tune, filter_exp, dealiasing, 
+                               filter_type, Nexp)
+    non_zero_idx = filter2d != 0
+    filter_rate_2d = np.zeros_like(filter2d)
+    filter_rate_2d[non_zero_idx] = (1/filter2d[non_zero_idx]-1)/(2*dt)
+    return filter_rate_2d
+
+def time_step(enstrophy, dt_tune, beta, kmax):
+    """get adapted time step fro enstrophy field (in physical space)
+    
+    Args:
+        enstrophy: numpy array with shape (time(optional), lat, lon, z(optional))
+        dt_tune: tuing parameter
+        beta: beta parameter
+        kmax: reso parameter
+    
+    Return:
+        dt: a float or numpy array
+    """
+    if _is_single_time(enstrophy):
+        dt = dt_tune*np.pi/(kmax*np.sqrt(np.max([enstrophy.max(), beta, 1.0])))
+    else:
+        dt = np.zeros(enstrophy.shape[0])
+        for i in range(len(dt)):
+            dt[i] = dt_tune*np.pi/(kmax*np.sqrt(np.max([enstrophy[i].max(), beta, 1.0])))
+    return dt
+
 def get_betay(pvg, beta):
     """
     Given a potential vorticity field in physical space, return the beta*y that
@@ -396,14 +478,29 @@ def _is_single_time(shape):
     array
     Single time would be (ky, kx, z(optional)
     Multiple time would be (time, ky, kx, z(optional)
+    
+    Args:
+        shape: tuple or numpy array. If tuple, assume to be the shape of spectral
+               field
     """
-    res_ndims = len(shape) - (not _is_single_layer(shape))
-    if res_ndims == 3:
-        return False
-    elif res_ndims == 2:
-        return True
+    if isinstance(shape, tuple):
+        res_ndims = len(shape) - (not _is_single_layer(shape))
+        if res_ndims == 3:
+            return False
+        elif res_ndims == 2:
+            return True
+        else:
+            raise ValueError('cannot determine is single time or not')
+    elif isinstance(shape, np.ndarray):
+        res_ndims = shape.ndim - (not _is_single_layer(shape))
+        if res_ndims == 3:
+            return False
+        elif res_ndims == 2:
+            return True
+        else:
+            raise ValueError('cannot determine is single time or not')
     else:
-        raise ValueError('cannot determine is single time or not')
+        raise TypeError('unrecognized type')
 
 def _is_single_layer(shape):
     """determine the given `shape` tuple or numpy array field corresponds to 
