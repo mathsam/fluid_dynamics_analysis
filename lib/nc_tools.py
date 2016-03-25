@@ -364,10 +364,63 @@ class NetCDFChain(object):
             else:
                 raise Exception("Unknown situation")
 
+class CreateRestartNC(object):
+    def __init__(self, nc_name='restart.nc', kx=1023, ky=512, z=1, ztracer=1,version=1):
+        """Initialize a NetCDF file with axis kx, ky, z, ztracer of specified
+        length
+        This intends to be the restart file so time dimension only has length 1
+        
+        Inputs:
+            nc_name: filename for the NetCDF file
+            kx, ky, z, ztracer: axis length for those axes
+                Not that if input is None, does not create this axis
+            version: version of netcdf to read / write, where 1 means Classic 
+                format and 2 means 64-bit offset format. The QG model uses classic
+        """
+        self.nc_name = nc_name
+        self.f = netcdf.netcdf_file(nc_name, 'w', version=version)
+        self.kx = kx
+        self.ky = ky
+        self.z  = z
+        self.f.createDimension('time_step', 1)
+        self.f.createDimension('real_and_imag', 2)
+        self.f.createDimension('kx', kx)
+        self.f.createDimension('ky', ky)
+        self.f.createDimension('z',  z)
+        if ztracer:
+            self.ztracer = ztracer
+            self.f.createDimension('ztracer', ztracer)
+    
+    def write_var(self, var_name, var, is_tracer=False):
+        """write a variable `var` with name `var_name` into the file
+        
+        Inputs:
+            var_name: string
+            var: complex numpy array with shape (t=1, ky, kx, z|ztracer)
+        """
+        if var.ndim != 4:
+            raise ValueError('dimension mismatch with requirement')
+        if var.shape != (1, self.ky, self.kx, self.z) or var.shape != (
+                         1, self.ky, self.kx, self.ztracer):
+            raise ValueError('shape mismatch with initialization')
+        if not is_tracer:
+            empty_var = self.f.createVariable(var_name, 'float', 
+                ('time_step','real_and_imag','ky','kx','z'))
+        else:
+            empty_var = self.f.createVariable(var_name, 'float', 
+                ('time_step','real_and_imag','ky','kx','ztracer'))
+        empty_var[:,0,:,:,:] = var.real
+        empty_var[:,1,:,:,:] = var.imag
+    
+    def __del__(self):
+        self.f.flush()
+        self.f.close()
+
 
 if __name__ == "__main__":
-    filename_regexp = r'Nov28_qg_seg[0-9]+'
-    filedir = '/archive/Junyi.Chai/QG_exp/Nov28_qg'
-    f = NetCDFChain(filedir,filename_regexp,'psi')
-    a = f[49:51]
-    print a.shape
+    nc_name = 'test_restart.nc'
+    psi = np.random.normal(0., 1., (1, 512, 1023, 1)) \
+          + 1j*np.random.normal(0., 1., (1, 512, 1023, 1))
+    f = CreateRestartNC(nc_name)
+    f.write_var('psi',psi)
+    del f
