@@ -3,7 +3,8 @@ See formulation in documentation"""
 import qg_transform as qgt
 
 class BarotropicKE(object):
-    """barotropic total flow
+    """Two-layer QG model only
+    barotropic total flow
     
     Methods return (k, dKEk/dt of various terms)
     """

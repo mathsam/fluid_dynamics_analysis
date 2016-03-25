@@ -81,15 +81,16 @@ def get_PV(psik, F):
     Refers to Vallis (2006), page 223, Eq. (5.137). F = f0^2/g'. H1 and H2
     correspond dz.
     """
+    if _is_single_layer(psik) or psik.shape[-1] != 2:
+        raise TypeError('stream function must have two layers')
     kmax = psik.shape[-3] - 1
     kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
     k2 = kx_**2 + ky_**2
     k2.shape = (1,)*(psik.ndim-3) + psik.shape[-3:-1]
-    dz = 0.5
     
     pvk = np.empty_like(psik)
-    pvk[..., 0] = -k2*psik[..., 0] + F/dz*(psik[..., 1] - psik[..., 0])
-    pvk[..., 1] = -k2*psik[..., 1] + F/dz*(psik[..., 0] - psik[..., 1])
+    pvk[..., 0] = -k2*psik[..., 0] + 2*F*(psik[..., 1] - psik[..., 0])
+    pvk[..., 1] = -k2*psik[..., 1] + 2*F*(psik[..., 0] - psik[..., 1])
     return pvk
     
 def prod_domain_ave_int(field1, field2):
@@ -252,7 +253,7 @@ def hypervis_filter(kmax, filter_tune=1.0, filter_exp=4, dealiasing='isotropic',
         raise NotImplementedError('dealiasing type not implemented')
     return filter2d
 
-def hypervis_filter_rate(kmax, dt, filter_tune=1.0, filter_exp=4, dealiasing='isotropic', 
+def hypervis_filter_rate(kmax, dt, filter_tune=1.0, filter_exp=4, dealiasing='orszag', 
                     filter_type='hyperviscous', Nexp=1.0):
     """Return the hyperviscous filter rate in use for the spectrum
     
@@ -271,18 +272,29 @@ def hypervis_filter_rate(kmax, dt, filter_tune=1.0, filter_exp=4, dealiasing='is
     The effect of filter:
         dq/dt = ... + filter_rate_2d*q
     """
-    filter2d = hypervis_filter(kmax, filter_tune, filter_exp, dealiasing, 
-                               filter_type, Nexp)
-    non_zero_idx = filter2d != 0
-    filter_rate_2d = np.zeros_like(filter2d)
-    filter_rate_2d[non_zero_idx] = (1/filter2d[non_zero_idx]-1)/(2*dt)
-    return filter_rate_2d
+    kx_, ky_ = np.meshgrid(range(-kmax, kmax+1), range(0, kmax+1))
+    k2 = kx_**2 + ky_**2
+    kmax_da2 = 8./9. * (kmax+1)**2
+    ngrid = 2*(kmax+1)
+    
+    if filter_type == 'hyperviscous':
+        filter2d = filter_tune*(4*np.pi/ngrid**Nexp) * (k2/kmax_da2)**filter_exp
+    else:
+        raise NotImplementedError('other filter types than hyperviscous not implemented')
 
-def time_step(enstrophy, dt_tune, beta, kmax):
+    if dealiasing == 'isotropic':
+        filter2d[k2 >= 8./9.*(kmax+1)**2] = 0
+    elif dealiasing == 'orszag':
+        filter2d[k2 >= 4./3.*(kmax+1)**2] = 0
+    else:
+        raise NotImplementedError('dealiasing type not implemented')
+    return (-1)**(filter_exp+1) * filter2d/(2*dt)
+
+def time_step(qs, dt_tune, beta, kmax):
     """get adapted time step fro enstrophy field (in physical space)
     
     Args:
-        enstrophy: numpy array with shape (time(optional), lat, lon, z(optional))
+        qs: pv spectrum with shape (time(optional), ky, kx, z(optional))
         dt_tune: tuing parameter
         beta: beta parameter
         kmax: reso parameter
@@ -290,12 +302,18 @@ def time_step(enstrophy, dt_tune, beta, kmax):
     Return:
         dt: a float or numpy array
     """
-    if _is_single_time(enstrophy):
-        dt = dt_tune*np.pi/(kmax*np.sqrt(np.max([enstrophy.max(), beta, 1.0])))
+    if _is_single_layer(qs):
+        nz = 1
     else:
-        dt = np.zeros(enstrophy.shape[0])
+        nz = qs.shape[-1]
+    if _is_single_time(qs):
+        enstrophy = np.sum(np.real(qs*np.conj(qs)))/nz
+        dt = dt_tune*np.pi/(kmax*np.sqrt(np.max([enstrophy, beta, 1.0])))
+    else:
+        dt = np.zeros(qs.shape[0])
         for i in range(len(dt)):
-            dt[i] = dt_tune*np.pi/(kmax*np.sqrt(np.max([enstrophy[i].max(), beta, 1.0])))
+            enstrophy = np.sum(np.real(qs[i]*np.conj(qs[i])))/nz
+            dt[i] = dt_tune*np.pi/(kmax*np.sqrt(np.max([enstrophy.max(), beta, 1.0])))
     return dt
 
 def get_betay(pvg, beta):
@@ -414,9 +432,14 @@ def real2complex(rfield):
     """
     convert raw qg_model output to complex numpy array
     suppose input has shape
-        psi(time_step (optional), real_and_imag, ky, kx, z)
+        psi(time_step (optional), real_and_imag, ky, kx, z(optional))
     """
-    return rfield[...,0,:,:,:]+1j*rfield[...,1,:,:,:]
+    if rfield.shape[-2]+1 == 2*rfield.shape[-3]:
+        return rfield[...,0,:,:,:]+1j*rfield[...,1,:,:,:]
+    elif rfield.shape[-1]+1 == 2*rfield.shape[-2]:
+        return rfield[...,0,:,:]+1j*rfield[...,1,:,:]
+    else:
+        raise NotImplementedError('Unrecognized field type')
 
 def fullspec(hfield, single_layer=False):
     """
@@ -729,6 +752,73 @@ def barotropic_Ek(psic):
         return _barotropic_Ek_ncchain(psic)
     else:
         raise TypeError("Input type not supported")
+
+def _barotropic_spec_ncchain(psi):
+    """
+    process NetCDFChain object with lots of files
+    @param psi has shape (time, real_and_imag, ky, kx, z)
+    
+    Return:
+        sum up psi(k)*conj(psi(k)) for total wavenumber k
+    """
+    if not isinstance(psi, nc_tools.NetCDFChain):
+        raise TypeError("Not NetCDFChain object")
+    nky, nkx = psi.shape[-3:-1]
+    ksqd_    = np.zeros((nky, nkx), dtype=float)
+    kmax     = nky - 1
+    indx_kx0 = (nkx-1)/2
+    KE2d  = np.zeros((nky, nkx), dtype=float)
+    Ek    = np.zeros(kmax,       dtype=float)
+    EKEk  = np.zeros(kmax,       dtype=float)
+    
+    for j in range(0, nky):
+        for i in range(0, nkx):
+            ksqd_[j,i] = (i-kmax)**2 + j**2
+        
+    radius_arr = np.floor(np.sqrt(ksqd_)).astype(int)
+
+    for i, dt in enumerate(psi.time_steps_each_file):
+        #reading each file all together; if read in each time step each time
+        #reading files will take too much time
+        psi_seg = psi[psi.time_steps_before[i]:psi.time_steps_before[i]+dt]
+        if psi_seg.ndim != 5:
+            raise TypeError("file does not have correct number of dimensions")
+        psi_seg = np.mean(psi_seg, psi_seg.ndim-1) #barotropic field
+        KE2d += np.mean(np.sum(psi_seg*psi_seg, 1), 0)
+
+    KE2d /= len(psi.sorted_files)
+
+    for i in range(0,kmax):
+        Ek[i]   = np.sum(KE2d[radius_arr == i+1])
+    
+    KE2d[:,indx_kx0] = 0.
+
+    for i in range(0,kmax):
+        EKEk[i]   = np.sum(KE2d[radius_arr == i+1])
+
+    return np.arange(1,kmax+1), Ek, EKEk
+    
+    
+def barotropic_spec(psic):
+    """
+    barotropic energy spectrum for multiple times and multiple layers
+    @param psic complex numpy array
+                returned from real2complex, has shape 
+                (time (optional), ky, kx, z)
+            OR  NetCDFChain object
+                has shape (time, real_and_imag, ky, kx, z)
+    @return (wavenumber, Ek, EKEk) 1d numpy array
+        Ek is sum of psic(k)*conj(psic(k)) at total wavenumber k
+    """
+    if isinstance(psic, scipy.io.netcdf.netcdf_variable):
+        psic = psic[:]
+        psic = real2complex(psic)
+    if isinstance(psic, np.ndarray):
+        raise NotImplementedError('Please use prod_spec instead')
+    elif isinstance(psic, nc_tools.NetCDFChain):
+        return _barotropic_spec_ncchain(psic)
+    else:
+        raise TypeError("Input type not supported")
         
 def filter(spec, k_min, k_max, remove_zonal=False):
     """filter the spectrum
@@ -736,7 +826,7 @@ def filter(spec, k_min, k_max, remove_zonal=False):
     [k_min, kmax]
     
     Args:
-        spec: complex numpy array with shape (time(optional), ky, kx, z)
+        spec: complex numpy array with shape (time(optional), ky, kx, z(optional))
         k_min, k_max: integer|None, mininum and maximum wavenumbers to keep
             if set to None, then means no lower or upper bound
         remove_zonal: True|False (default)
@@ -744,22 +834,40 @@ def filter(spec, k_min, k_max, remove_zonal=False):
     Return:
         filtered_spec: same size as the input `spec`
     """
-    nky, nkx = spec.shape[-3:-1]
-    ksqd_    = np.zeros((nky, nkx), dtype=float)
-    kmax     = nky - 1
-    
-    for j in range(0, nky):
-        for i in range(0, nkx):
-            ksqd_[j,i] = (i-kmax)**2 + j**2
-    mask = np.ones_like(ksqd_)
-    if k_min:
-        mask[ksqd_ < k_min**2] = 0.
-    if k_max:
-        mask[ksqd_ > k_max**2] = 0.
-    if remove_zonal:
-        mask[:,(nkx-1)/2] = 0.
-    mask.shape = (1,)*(spec.ndim-3) + mask.shape + (1,)
-    return mask*spec
+    if not _is_single_layer(spec):
+        nky, nkx = spec.shape[-3:-1]
+        ksqd_    = np.zeros((nky, nkx), dtype=float)
+        kmax     = nky - 1
+        
+        for j in range(0, nky):
+            for i in range(0, nkx):
+                ksqd_[j,i] = (i-kmax)**2 + j**2
+        mask = np.ones_like(ksqd_)
+        if k_min:
+            mask[ksqd_ < k_min**2] = 0.
+        if k_max:
+            mask[ksqd_ > k_max**2] = 0.
+        if remove_zonal:
+            mask[:,(nkx-1)/2] = 0.
+        mask.shape = (1,)*(spec.ndim-3) + mask.shape + (1,)
+        return mask*spec
+    else:
+        nky, nkx = spec.shape[-2:]
+        ksqd_    = np.zeros((nky, nkx), dtype=float)
+        kmax     = nky - 1
+        
+        for j in range(0, nky):
+            for i in range(0, nkx):
+                ksqd_[j,i] = (i-kmax)**2 + j**2
+        mask = np.ones_like(ksqd_)
+        if k_min:
+            mask[ksqd_ < k_min**2] = 0.
+        if k_max:
+            mask[ksqd_ > k_max**2] = 0.
+        if remove_zonal:
+            mask[:,(nkx-1)/2] = 0.
+        mask.shape = (1,)*(spec.ndim-2) + mask.shape
+        return mask*spec
     
 def filter_zonal(spec, kx_min, kx_max, remove_zonal=False):
     """filter the spectrum in the zonal direction

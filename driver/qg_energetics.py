@@ -1,12 +1,12 @@
 ## load data
 import sys
 sys.path.append('/home/j1c/py/lib');
-#import matlab_style as ml
+import matlab_style as ml
 #ml.clear()
 from nc_tools import NetCDFChain
 import numpy as np
 
-filename_prefix = 'Nov4_Sc2.0_drag5e-4'
+filename_prefix = 'Nov5_Sc1.8_drag5e-3'
 filedir  = '/archive/Junyi.Chai/QG_exp/%s' %filename_prefix
 filename = r'%s_energy_seg[0-9]+' %filename_prefix
 

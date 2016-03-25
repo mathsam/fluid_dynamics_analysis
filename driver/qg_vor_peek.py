@@ -7,9 +7,9 @@ import numpy as np
 import matlab_style
 
 which_layer = 0
-filename_prefix = 'Nov4_drag5e-5'
+filename_prefix = 'Dec12_kf64_drag1e-4'
 filedir  = '/archive/Junyi.Chai/QG_exp/%s' %filename_prefix
-filename = r'%s_seg17' %filename_prefix
+filename = r'%s_seg239' %filename_prefix
 psif = nc_tools.ncread(filedir, filename,'psi')
 psi = psif[-1,:,:,:]
 psic = qg_transform.real2complex(psi)
@@ -21,6 +21,13 @@ vormap.set_cmap('gray')
 vormap_std = np.std(vorg[...,which_layer].flatten())
 vormap.set_clim(-2*vormap_std, 2*vormap_std)
 fig = plt.gcf()
+plt.show()
+
+## tracer_y
+
+tracerc = qg_transform.real2complex(nc_tools.ncread(filedir, filename,'tracer_y')[-1])
+tracerg = qg_transform.spec2grid(tracerc)
+plt.imshow(tracerg[...,which_layer], cmap='gray')
 plt.show()
 
 ## save figure
