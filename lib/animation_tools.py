@@ -33,22 +33,25 @@ def make_animation(frames, num_frames, cmap='gray'):
     return fig, ani
     
 class AnimationFrames(object):
-    def __init__(self, ncchain_raw, z_level):
+    def __init__(self, ncchain_raw, z_level, eddy_only=False):
         """
         asumme the input to be qg_model output
         @param ncchain_raw NetCDFChain object; or numpy array
         @param z_level which vertical level to output
+        @param eddy_only, whether or not to only show eddy field
         """
         self._ncchain = ncchain_raw
         self.total_frames = ncchain_raw.total_time_steps
         self._z_level = z_level
+        self._eddy_only = eddy_only
         return
     def get_frame(self, frame_index):
         import qg_transform
         psi_raw = self._ncchain[frame_index,:,:,:,self._z_level]
-        psi_raw.shape += (1,)
         psic    = qg_transform.real2complex(psi_raw)
         vorc    = qg_transform.get_vorticity(psic)
+        if self._eddy_only:
+            vorc = qg_transform.filter(vorc, None, None, True)
         vorg    = qg_transform.spec2grid(vorc)
         vorg.shape = vorg.shape[0:2]
         return vorg

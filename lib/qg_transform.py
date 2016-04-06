@@ -156,7 +156,7 @@ def prod_spectrum(field1, field2):
         spec1d = np.zeros((kmax, field1.shape[-1]))
     for i in range(0,kmax):
         spec1d[i,...]   = np.sum(prod2d_ave[radius_arr == i+1,...], 0)
-    return np.arange(1,kmax+1), 2*spec1d
+    return np.arange(1,kmax+1), 2*spec1d.squeeze()
     
 def prod_spectrum_zonal(field1, field2):
     """
@@ -186,7 +186,7 @@ def prod_spectrum_zonal(field1, field2):
         nky, nkx = field1.shape[-3:-1]
     kmax = nky - 1
     spec1d = (prod1d_ave + prod1d_ave[::-1])[-kmax:]
-    return np.arange(1,kmax+1), 2*spec1d
+    return np.arange(1,kmax+1), 2*spec1d.squeeze()
 
 def prod_spectrum_meridional(field1, field2):
     """
@@ -215,7 +215,7 @@ def prod_spectrum_meridional(field1, field2):
     else:
         nky, nkx = field1.shape[-3:-1]
     kmax = nky - 1
-    return np.arange(1,kmax+1), 2*prod1d_ave[1:]
+    return np.arange(1,kmax+1), 2*prod1d_ave[1:].squeeze()
 
 def hypervis_filter(kmax, filter_tune=1.0, filter_exp=4, dealiasing='isotropic', 
                     filter_type='hyperviscous', Nexp=1.0):
